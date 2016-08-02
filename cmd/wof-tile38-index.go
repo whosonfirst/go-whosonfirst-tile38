@@ -1,22 +1,22 @@
 package main
 
 import (
-       "flag"
-       "fmt"
-       "github.com/garyburd/redigo/redis"
-       "github.com/whosonfirst/go-whosonfirst-crawl"
-       "github.com/whosonfirst/go-whosonfirst-geojson"
-       "os"
-       "runtime"
-       "strconv"
+	"flag"
+	"fmt"
+	"github.com/garyburd/redigo/redis"
+	"github.com/whosonfirst/go-whosonfirst-crawl"
+	"github.com/whosonfirst/go-whosonfirst-geojson"
+	"os"
+	"runtime"
+	"strconv"
 )
 
-func main(){
+func main() {
 
 	root := flag.String("root", "", "...")
 	procs := flag.Int("procs", 200, "...")
 	// verbose := flag.Bool("verbose", false, "...")
-	
+
 	tile38_host := flag.String("tile38-host", "localhost", "...")
 	tile38_port := flag.Int("tile38-port", 9851, "...")
 
@@ -29,21 +29,20 @@ func main(){
 
 	cb := func(abs_path string, info os.FileInfo) error {
 
-		fmt.Println("index", abs_path)
+		// please put me in a package specific function
+		// fmt.Println("index", abs_path)
 
 		feature, err := geojson.UnmarshalFile(abs_path)
 
 		if err != nil {
-		   fmt.Println("FAIL 1", err)
-		   return err		       
+			return err
 		}
 
 		wofid := feature.Id()
 		str_wofid := strconv.Itoa(wofid)
 
 		if err != nil {
-		   fmt.Println("FAIL 2", err)
-		   return err
+			return err
 		}
 
 		body := feature.Body()
@@ -54,8 +53,7 @@ func main(){
 		conn, err := redis.Dial("tcp", tile38_endpoint)
 
 		if err != nil {
-	   	   fmt.Println("FAIL 3", err)
-		   return nil
+			return nil
 		}
 
 		defer conn.Close()
@@ -63,15 +61,27 @@ func main(){
 		_, err = conn.Do("SET", "whosonfirst", str_wofid, "OBJECT", str_geom)
 
 		if err != nil {
-		   fmt.Println("FAIL 4", err)
-		   return err
+			return err
 		}
 
-		fmt.Println("OK", wofid)
+		// http://tile38.com/commands/set/
+		// http://tile38.com/commands/fset/
+
+		placetype := feature.Placetype()
+		key := fmt.Sprintf("%d:placetype", wofid)
+
+		_, err = conn.Do("FSET", "whosonfirst", key, "STRING", placetype)
+
+		if err != nil {
+			fmt.Printf("FAILED to set placetype on %d because, %v\n", wofid, err)
+		}
+
+		// please set hierarchy information
+
 		return nil
 	}
 
 	c := crawl.NewCrawler(*root)
 	_ = c.Crawl(cb)
-     
+
 }

@@ -17,7 +17,7 @@ deps:   self
 	@GOPATH=$(GOPATH) go get -u "github.com/garyburd/redigo/redis"
 
 fmt:
-	go fmt *.go
+	go fmt cmd/*.go
 
 bin:	self
 	@GOPATH=$(GOPATH) go build -o bin/wof-tile38-index cmd/wof-tile38-index.go
