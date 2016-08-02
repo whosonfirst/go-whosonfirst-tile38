@@ -15,6 +15,8 @@ func main() {
 
 	root := flag.String("root", "", "...")
 	procs := flag.Int("procs", 200, "...")
+	nfs_kludge := flag.Bool("nfs-kludge", false, "Enable the (walk.go) NFS kludge to ignore 'readdirent: errno' 523 errors")
+
 	// verbose := flag.Bool("verbose", false, "...")
 
 	tile38_host := flag.String("tile38-host", "localhost", "...")
@@ -68,12 +70,12 @@ func main() {
 		// http://tile38.com/commands/fset/
 
 		placetype := feature.Placetype()
-		key := fmt.Sprintf("%d:placetype", wofid)
+		key := str_wofid + ":placetype"
 
-		_, err = conn.Do("FSET", "whosonfirst", key, "STRING", placetype)
+		_, err = conn.Do("SET", "whosonfirst", key, "STRING", placetype)
 
 		if err != nil {
-			fmt.Printf("FAILED to set placetype on %d because, %v\n", wofid, err)
+			fmt.Printf("FAILED to set placetype on %s because, %v\n", key, err)
 		}
 
 		// please set hierarchy information
@@ -82,6 +84,8 @@ func main() {
 	}
 
 	c := crawl.NewCrawler(*root)
+	c.NFSKludge = *nfs_kludge
+
 	_ = c.Crawl(cb)
 
 }
