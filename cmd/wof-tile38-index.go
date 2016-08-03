@@ -6,6 +6,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"github.com/whosonfirst/go-whosonfirst-crawl"
 	"github.com/whosonfirst/go-whosonfirst-geojson"
+	"log"
 	"os"
 	"runtime"
 	"strconv"
@@ -27,16 +28,17 @@ func main() {
 	runtime.GOMAXPROCS(*procs)
 
 	tile38_endpoint := fmt.Sprintf("%s:%d", *tile38_host, *tile38_port)
-	fmt.Println("connect to", tile38_endpoint)
+	log.Println("connect to", tile38_endpoint)
 
 	cb := func(abs_path string, info os.FileInfo) error {
 
 		// please put me in a package specific function
-		// fmt.Println("index", abs_path)
+		log.Println("index", abs_path)
 
 		feature, err := geojson.UnmarshalFile(abs_path)
 
 		if err != nil {
+			log.Printf("PARSE error %v\n", err)
 			return err
 		}
 
@@ -55,6 +57,7 @@ func main() {
 		conn, err := redis.Dial("tcp", tile38_endpoint)
 
 		if err != nil {
+			log.Printf("CONNECT error %v\n", err)
 			return nil
 		}
 
@@ -63,6 +66,7 @@ func main() {
 		_, err = conn.Do("SET", "whosonfirst", str_wofid, "OBJECT", str_geom)
 
 		if err != nil {
+			log.Printf("SET error %v\n", err)
 			return err
 		}
 
