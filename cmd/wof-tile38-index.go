@@ -16,6 +16,7 @@ func main() {
 
 	root := flag.String("root", "", "...")
 	procs := flag.Int("procs", 200, "...")
+	collection := flag.String("collection", "whosonfirst", "...")
 	nfs_kludge := flag.Bool("nfs-kludge", false, "Enable the (walk.go) NFS kludge to ignore 'readdirent: errno' 523 errors")
 
 	// verbose := flag.Bool("verbose", false, "...")
@@ -63,7 +64,7 @@ func main() {
 
 		defer conn.Close()
 
-		_, err = conn.Do("SET", "whosonfirst", str_wofid, "OBJECT", str_geom)
+		_, err = conn.Do("SET", *collection, str_wofid, "OBJECT", str_geom)
 
 		if err != nil {
 			log.Printf("SET error %v\n", err)
@@ -73,16 +74,16 @@ func main() {
 		// http://tile38.com/commands/set/
 		// http://tile38.com/commands/fset/
 
-		placetype := feature.Placetype()
-		key := str_wofid + ":placetype"
+		/*
+			placetype := feature.Placetype()
+			key := str_wofid + ":placetype"
 
-		_, err = conn.Do("SET", "whosonfirst", key, "STRING", placetype)
+			_, err = conn.Do("SET", "whosonfirst", key, "STRING", placetype)
 
-		if err != nil {
-			fmt.Printf("FAILED to set placetype on %s because, %v\n", key, err)
-		}
-
-		// please set hierarchy information
+			if err != nil {
+				fmt.Printf("FAILED to set placetype on %s because, %v\n", key, err)
+			}
+		*/
 
 		return nil
 	}
