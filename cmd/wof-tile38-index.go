@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/garyburd/redigo/redis"
-	gabs "github.com/jeffail/gabs"
 	"github.com/whosonfirst/go-whosonfirst-crawl"
 	"github.com/whosonfirst/go-whosonfirst-geojson"
 	"log"
@@ -17,10 +16,8 @@ func main() {
 
 	root := flag.String("root", "", "...")
 	procs := flag.Int("procs", 200, "...")
-	collection := flag.String("collection", "whosonfirst", "...")
+	collection := flag.String("collection", "", "...")
 	nfs_kludge := flag.Bool("nfs-kludge", false, "Enable the (walk.go) NFS kludge to ignore 'readdirent: errno' 523 errors")
-
-	// verbose := flag.Bool("verbose", false, "...")
 
 	tile38_host := flag.String("tile38-host", "localhost", "...")
 	tile38_port := flag.Int("tile38-port", 9851, "...")
@@ -33,6 +30,12 @@ func main() {
 	log.Println("connect to", tile38_endpoint)
 
 	cb := func(abs_path string, info os.FileInfo) error {
+
+		/*
+			TO DO - logic to filter out alt files like this:
+			https://github.com/whosonfirst/py-mapzen-whosonfirst-utils/blob/master/mapzen/whosonfirst/utils/__init__.py#L265
+
+		*/
 
 		// please put me in a package specific function
 		log.Println("index", abs_path)
@@ -65,53 +68,44 @@ func main() {
 
 		defer conn.Close()
 
-		/*
-			cmd := "SET"
-			args:= make([]interface{}, 0)
+		placetype := feature.Placetype()
 
-			args = append(args, *collection)
-			args = append(args, str_wofid)
-			args = append(args, "OBJECT")
-			args = append(args, str_geom)
+		if *collection == "" {
+			*collection = "whosonfirst-" + placetype
+		}
+
+		/*
+
+			Basically to do any kind of string/pattern matching with Tile38 we need to encode the value as part
+			of the key name so that we can glob it out with a 'MATCH' filter. So the rule of thumb is wof_id + "#" +
+			placetype and so on.
+
+			INTERSECTS whosonfirst MATCH *neighbourhood NOFIELDS BOUNDS 40.744152 -73.990474 40.744152 -73.990474
+			INTERSECTS whosonfirst MATCH *neigh*ood BOUNDS 40.744152 -73.990474 40.744152 -73.990474
+
 		*/
 
-		h := MakeHierarchy(body)
+		key := str_wofid + "#" + placetype
 
-		country_id, ok := h["country_id"]
+		/*
 
-		if !ok {
-			country_id = -1
-		}
+			The conn.Do method takes a string command and then a "..." of interface{} thingies
+			but unfortunately I don't know how to define the latter as a []interface{} and then
+			pass that list in so that the compiler thinks they are "..." -able. Good times...
+			(20160804/thisisaaronland)
 
-		region_id, ok := h["region_id"]
+		*/
 
-		if !ok {
-			region_id = -1
-		}
+		/*
+			FIELDS are really only good for numeric things that you want to query with a range or that
+			you want/need to include with every response item (like wof:id)
+		*/
 
-		locality_id, ok := h["locality_id"]
-
-		if !ok {
-			locality_id = -1
-		}
-
-		_, err = conn.Do("SET", *collection, str_wofid, "FIELD", "country_id", country_id, "FIELD", "region_id", region_id, "FIELD", "locality_id", locality_id, "OBJECT", str_geom)
+		_, err = conn.Do("SET", *collection, key, "FIELD", "wof:id", wofid, "OBJECT", str_geom)
 
 		if err != nil {
 			log.Printf("SET error %v\n", err)
 			return err
-		}
-
-		// http://tile38.com/commands/set/
-		// http://tile38.com/commands/fset/
-
-		placetype := feature.Placetype()
-		placetype_key := str_wofid + ":placetype"
-
-		_, err = conn.Do("SET", *collection, placetype_key, "STRING", placetype)
-
-		if err != nil {
-			fmt.Printf("FAILED to set placetype on %s because, %v\n", placetype_key, err)
 		}
 
 		name := feature.Name()
@@ -123,6 +117,17 @@ func main() {
 			fmt.Printf("FAILED to set name on %s because, %v\n", name_key, err)
 		}
 
+		hiers := body.Path("properties.wof:hierarchy")
+		str_hiers := hiers.String()
+
+		hiers_key := str_wofid + ":hierarchy"
+
+		_, err = conn.Do("SET", *collection, hiers_key, "STRING", str_hiers)
+
+		if err != nil {
+			fmt.Printf("FAILED to set name on %s because, %v\n", hiers_key, err)
+		}
+
 		return nil
 	}
 
@@ -132,6 +137,10 @@ func main() {
 	_ = c.Crawl(cb)
 
 }
+
+// this isn't being used anywhere but it's handy code we should put... somewhere
+
+/*
 
 func MakeHierarchy(body *gabs.Container) map[string]int64 {
 
@@ -155,10 +164,34 @@ func MakeHierarchy(body *gabs.Container) map[string]int64 {
 
 	for ancestor, v := range possible {
 
-		wofid := v.Data().(float64)
+		var wofid int
+
+		fl_wofid, ok := v.Data().(float64)
+
+		if ok {
+			wofid = int(fl_wofid)
+
+		} else {
+
+			str_wofid, ok := v.Data().(string)
+
+			if ok {
+				wofid, err = strconv.Atoi(str_wofid)
+
+				if err != nil {
+					ok = false
+				}
+			}
+		}
+
+		if !ok {
+			continue
+		}
 
 		h[ancestor] = int64(wofid)
 	}
 
 	return h
 }
+
+*/
