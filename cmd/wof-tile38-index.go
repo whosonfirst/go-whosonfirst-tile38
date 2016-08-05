@@ -6,6 +6,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"github.com/whosonfirst/go-whosonfirst-crawl"
 	"github.com/whosonfirst/go-whosonfirst-geojson"
+	"github.com/whosonfirst/go-whosonfirst-placetypes"
 	"log"
 	"os"
 	"runtime"
@@ -28,6 +29,12 @@ func main() {
 
 	tile38_endpoint := fmt.Sprintf("%s:%d", *tile38_host, *tile38_port)
 	log.Println("connect to", tile38_endpoint)
+
+	placetypes, err := placetypes.Init()
+
+	if err != nil {
+		panic(err)
+	}
 
 	cb := func(abs_path string, info os.FileInfo) error {
 
@@ -70,6 +77,13 @@ func main() {
 
 		placetype := feature.Placetype()
 
+		pt, err := placetypes.GetPlacetypeByName(placetype)
+
+		if err != nil {
+			log.Println("invalid placetype", placetype)
+			return nil
+		}
+
 		if *collection == "" {
 			*collection = "whosonfirst-" + placetype
 		}
@@ -85,7 +99,20 @@ func main() {
 
 		*/
 
-		key := str_wofid + "#" + placetype
+		repo_i := body.Path("properties.wof:repo").Data()
+
+		if err == nil {
+			log.Println("missing wof:repo for", str_wofid)
+			return nil
+		}
+
+		repo := repo_i.(string)
+
+		if repo == "" {
+			log.Println("missing wof:repo for", str_wofid)
+		}
+
+		key := str_wofid + "#" + repo
 
 		/*
 
@@ -101,7 +128,7 @@ func main() {
 			you want/need to include with every response item (like wof:id)
 		*/
 
-		_, err = conn.Do("SET", *collection, key, "FIELD", "wof:id", wofid, "OBJECT", str_geom)
+		_, err = conn.Do("SET", *collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "OBJECT", str_geom)
 
 		if err != nil {
 			log.Printf("SET error %v\n", err)
