@@ -9,6 +9,8 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-placetypes"
 	"log"
 	"os"
+	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 )
@@ -36,22 +38,27 @@ func main() {
 		panic(err)
 	}
 
+	re_wof, _ := regexp.Compile(`(\d+)\.geojson$`)
+
 	cb := func(abs_path string, info os.FileInfo) error {
 
-		/*
-			TO DO - logic to filter out alt files like this:
-			https://github.com/whosonfirst/py-mapzen-whosonfirst-utils/blob/master/mapzen/whosonfirst/utils/__init__.py#L265
+		// please make me more like this...
+		// https://github.com/whosonfirst/py-mapzen-whosonfirst-utils/blob/master/mapzen/whosonfirst/utils/__init__.py#L265
 
-		*/
+		fname := filepath.Base(abs_path)
 
-		// please put me in a package specific function
-		log.Println("index", abs_path)
+		if !re_wof.MatchString(fname) {
+			// log.Println("skip", abs_path)
+			return nil
+		}
+
+		// log.Println("index", abs_path)
 
 		feature, err := geojson.UnmarshalFile(abs_path)
 
 		if err != nil {
-			log.Printf("PARSE error %v\n", err)
-			return err
+			log.Printf("PARSE error for %s %v\n", abs_path, err)
+			return nil
 		}
 
 		wofid := feature.Id()
@@ -99,17 +106,16 @@ func main() {
 
 		*/
 
-		repo_i := body.Path("properties.wof:repo").Data()
+		repo, ok := feature.StringProperty("wof:repo")
 
-		if err == nil {
-			log.Println("missing wof:repo for", str_wofid)
+		if !ok {
+			log.Println("can't find wof:repo for", str_wofid)
 			return nil
 		}
 
-		repo := repo_i.(string)
-
 		if repo == "" {
 			log.Println("missing wof:repo for", str_wofid)
+			return nil
 		}
 
 		key := str_wofid + "#" + repo
@@ -127,6 +133,8 @@ func main() {
 			FIELDS are really only good for numeric things that you want to query with a range or that
 			you want/need to include with every response item (like wof:id)
 		*/
+
+		// log.Println("SET", *collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "OBJECT", "<geometry>")
 
 		_, err = conn.Do("SET", *collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "OBJECT", str_geom)
 
