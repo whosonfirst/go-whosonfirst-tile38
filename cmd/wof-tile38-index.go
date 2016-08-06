@@ -2,21 +2,21 @@ package main
 
 import (
 	"flag"
-	"github.com/whosonfirst/go-whosonfirst-crawl"
 	"github.com/whosonfirst/go-whosonfirst-tile38/index"
 	"log"
 	"os"
-	"path/filepath"
-	"regexp"
 	"runtime"
 )
 
 func main() {
 
-	root := flag.String("root", "", "...")
+	mode := flag.String("mode", "files", "...")
+
 	procs := flag.Int("procs", 200, "...")
 	collection := flag.String("collection", "", "...")
 	nfs_kludge := flag.Bool("nfs-kludge", false, "Enable the (walk.go) NFS kludge to ignore 'readdirent: errno' 523 errors")
+
+	debug := flag.Bool("debug", false, "...")
 
 	tile38_host := flag.String("tile38-host", "localhost", "...")
 	tile38_port := flag.Int("tile38-port", 9851, "...")
@@ -26,38 +26,33 @@ func main() {
 	runtime.GOMAXPROCS(*procs)
 
 	client, err := tile38.NewTile38Client(*tile38_host, *tile38_port)
+	client.Debug = *debug
 
 	if err != nil {
 		panic(err)
 	}
 
-	re_wof, _ := regexp.Compile(`(\d+)\.geojson$`)
+	args := flag.Args()
 
-	cb := func(abs_path string, info os.FileInfo) error {
+	for _, path := range args {
 
-		// please make me more like this...
-		// https://github.com/whosonfirst/py-mapzen-whosonfirst-utils/blob/master/mapzen/whosonfirst/utils/__init__.py#L265
+		if *mode == "directory" {
 
-		fname := filepath.Base(abs_path)
+			err = client.IndexDirectory(path, *collection, *nfs_kludge)
 
-		if !re_wof.MatchString(fname) {
-			// log.Println("skip", abs_path)
-			return nil
+		} else if *mode == "filelist" {
+
+			err = client.IndexFileList(path, *collection)
+
+		} else {
+
+			err = client.IndexFile(path, *collection)
 		}
-
-		err := client.IndexFile(abs_path, *collection)
 
 		if err != nil {
-		       log.Printf("failed to index %s, because %v", abs_path, err)
-		       return err
+			log.Fatalf("failed to index %s in %s mode, because %v", path, *mode, err)
 		}
-
-		return nil
 	}
 
-	c := crawl.NewCrawler(*root)
-	c.NFSKludge = *nfs_kludge
-
-	_ = c.Crawl(cb)
-
+	os.Exit(0)
 }

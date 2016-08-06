@@ -1,17 +1,26 @@
 package tile38
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"github.com/garyburd/redigo/redis"
+	"github.com/whosonfirst/go-whosonfirst-crawl"
 	"github.com/whosonfirst/go-whosonfirst-geojson"
 	"github.com/whosonfirst/go-whosonfirst-placetypes"
+	"log"
+	"os"
+	"path/filepath"
+	"regexp"
+	"runtime"
 	"strconv"
+	"sync"
 )
 
 type Tile38Client struct {
-	endpoint   string
-	placetypes *placetypes.WOFPlacetypes
+	Endpoint   string
+	Placetypes *placetypes.WOFPlacetypes
+	Debug      bool
 }
 
 func NewTile38Client(host string, port int) (*Tile38Client, error) {
@@ -25,8 +34,9 @@ func NewTile38Client(host string, port int) (*Tile38Client, error) {
 	endpoint := fmt.Sprintf("%s:%d", host, port)
 
 	client := Tile38Client{
-		endpoint:   endpoint,
-		placetypes: pt,
+		Endpoint:   endpoint,
+		Placetypes: pt,
+		Debug:      false,
 	}
 
 	return &client, nil
@@ -52,7 +62,7 @@ func (client *Tile38Client) IndexFile(abs_path string, collection string) error 
 
 	str_geom := geom.String()
 
-	conn, err := redis.Dial("tcp", client.endpoint)
+	conn, err := redis.Dial("tcp", client.Endpoint)
 
 	if err != nil {
 		return err
@@ -62,7 +72,7 @@ func (client *Tile38Client) IndexFile(abs_path string, collection string) error 
 
 	placetype := feature.Placetype()
 
-	pt, err := client.placetypes.GetPlacetypeByName(placetype)
+	pt, err := client.Placetypes.GetPlacetypeByName(placetype)
 
 	if err != nil {
 		return err
@@ -110,8 +120,10 @@ func (client *Tile38Client) IndexFile(abs_path string, collection string) error 
 
 	*/
 
-	fmt.Println("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "OBJECT", "...")
-	return nil
+	if client.Debug {
+		log.Println("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "OBJECT", "...")
+		return nil
+	}
 
 	_, err = conn.Do("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "OBJECT", str_geom)
 
@@ -143,4 +155,82 @@ func (client *Tile38Client) IndexFile(abs_path string, collection string) error 
 
 	return nil
 
+}
+
+func (client *Tile38Client) IndexDirectory(abs_path string, collection string, nfs_kludge bool) error {
+
+	re_wof, _ := regexp.Compile(`(\d+)\.geojson$`)
+
+	cb := func(abs_path string, info os.FileInfo) error {
+
+		// please make me more like this...
+		// https://github.com/whosonfirst/py-mapzen-whosonfirst-utils/blob/master/mapzen/whosonfirst/utils/__init__.py#L265
+
+		fname := filepath.Base(abs_path)
+
+		if !re_wof.MatchString(fname) {
+			// log.Println("skip", abs_path)
+			return nil
+		}
+
+		err := client.IndexFile(abs_path, collection)
+
+		if err != nil {
+			msg := fmt.Sprintf("failed to index %s, because %v", abs_path, err)
+			return errors.New(msg)
+		}
+
+		return nil
+	}
+
+	c := crawl.NewCrawler(abs_path)
+	c.NFSKludge = nfs_kludge
+
+	return c.Crawl(cb)
+}
+
+func (client *Tile38Client) IndexFileList(abs_path string, collection string) error {
+
+	file, err := os.Open(abs_path)
+
+	if err != nil {
+		return err
+	}
+
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	count := runtime.GOMAXPROCS(0) // perversely this is how we get the count...
+	ch := make(chan bool, count)
+
+	go func() {
+		for i := 0; i < count; i++ {
+			ch <- true
+		}
+	}()
+
+	wg := new(sync.WaitGroup)
+
+	for scanner.Scan() {
+
+		<-ch
+
+		path := scanner.Text()
+
+		wg.Add(1)
+
+		go func(path string, collection string, wg *sync.WaitGroup, ch chan bool) {
+
+			defer wg.Done()
+
+			client.IndexFile(path, collection)
+			ch <- true
+
+		}(path, collection, wg, ch)
+	}
+
+	wg.Wait()
+
+	return nil
 }
