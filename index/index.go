@@ -39,6 +39,22 @@ func NewTile38Client(host string, port int) (*Tile38Client, error) {
 		Debug:      false,
 	}
 
+	conn, err := redis.Dial("tcp", client.Endpoint)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer conn.Close()
+
+	rsp, err := conn.Do("PING")
+
+	if err != nil {
+		return nil, err
+	}
+
+	log.Println(rsp)
+
 	return &client, nil
 }
 
