@@ -53,8 +53,6 @@ func NewTile38Client(host string, port int) (*Tile38Client, error) {
 		return nil, err
 	}
 
-	log.Println(rsp)
-
 	return &client, nil
 }
 
