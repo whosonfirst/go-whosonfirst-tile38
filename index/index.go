@@ -47,7 +47,7 @@ func NewTile38Client(host string, port int) (*Tile38Client, error) {
 
 	defer conn.Close()
 
-	rsp, err := conn.Do("PING")
+	_, err = conn.Do("PING")
 
 	if err != nil {
 		return nil, err
