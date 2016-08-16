@@ -25,6 +25,13 @@ du -h /mnt/data/appendonly.aof
 11G     /mnt/data/appendonly.aof
 ```
 
+Load times (anecdotal):
+
+```
+2016/08/16 22:24:42 [INFO] Server started, Tile38 version 0.0.0, git 0000000
+2016/08/16 22:25:45 [INFO] AOF loaded 1681995 commands: 62.82s, 26773/s, 4 MB/s
+```
+
 ## See also
 
 * http://tile38.com
