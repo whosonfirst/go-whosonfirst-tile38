@@ -1,9 +1,14 @@
 package main
 
+	/*
+	If this looks an awful lot like wof-tile38-index.go that's because
+	it is. Please see notes at the top to concordances/concordances.go
+	(20160818/thisisaaronland)
+	*/
+
 import (
 	"flag"
-	"github.com/whosonfirst/go-whosonfirst-tile38/index"
-	// "github.com/whosonfirst/go-whosonfirst-tile38/simple"
+	"github.com/whosonfirst/go-whosonfirst-tile38/concordances"
 	"log"
 	"os"
 	"runtime"
