@@ -114,12 +114,14 @@ func (client *Tile38Client) IndexFile(abs_path string, source string) error {
 		}
 	}
 
+	collection := fmt.Sprintf("concordances-%s", source)
+
 	if client.Debug {
-		log.Println("SET", source, key, "FIELD", "id", wofid, "POINT", lat, lon)
+		log.Println("SET", collection, key, "FIELD", "id", wofid, "POINT", lat, lon)
 		return nil
 	}
 
-	_, err = conn.Do("SET", source, key, "FIELD", "id", wofid, "POINT", lat, lon)
+	_, err = conn.Do("SET", collection, key, "FIELD", "id", wofid, "POINT", lat, lon)
 
 	if err != nil {
 		return err
