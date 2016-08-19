@@ -25,8 +25,8 @@ import (
 )
 
 type Tile38Client struct {
-	Endpoint   string
-	Debug      bool
+	Endpoint string
+	Debug    bool
 }
 
 func NewTile38Client(host string, port int) (*Tile38Client, error) {
@@ -34,8 +34,8 @@ func NewTile38Client(host string, port int) (*Tile38Client, error) {
 	endpoint := fmt.Sprintf("%s:%d", host, port)
 
 	client := Tile38Client{
-		Endpoint:   endpoint,
-		Debug:      false,
+		Endpoint: endpoint,
+		Debug:    false,
 	}
 
 	conn, err := redis.Dial("tcp", client.Endpoint)
@@ -95,29 +95,40 @@ func (client *Tile38Client) IndexFile(abs_path string, source string) error {
 		lon = body.Path("properties.geom:longitude").Data().(float64)
 
 	} else {
-		
+
 		children, _ := body.S("geometry").ChildrenMap()
 
 		for key, child := range children {
 
-		    if key != "coordinates" {
-			continue
-		    }	
+			if key != "coordinates" {
+				continue
+			}
 
-		    var coords []interface{}
-		    coords, _ = child.Data().([]interface{})
+			var coords []interface{}
+			coords, _ = child.Data().([]interface{})
 
-		    lon = coords[0].(float64)
-		    lat = coords[1].(float64)
+			lon = coords[0].(float64)
+			lat = coords[1].(float64)
 
-		    break
+			break
 		}
+	}
+
+	name := feature.Name()
+
+	if source == "tgn" {
+		name, _ = body.Path("properties.tgn:name").Data().(string)
 	}
 
 	collection := fmt.Sprintf("concordances-%s", source)
 
 	if client.Debug {
 		log.Println("SET", collection, key, "FIELD", "id", wofid, "POINT", lat, lon)
+
+		name_key := fmt.Sprintf("%s#%s:name", str_wofid, source)
+
+		log.Println("SET", collection, name_key, "STRING", name)
+
 		return nil
 	}
 
@@ -127,10 +138,9 @@ func (client *Tile38Client) IndexFile(abs_path string, source string) error {
 		return err
 	}
 
-	name := feature.Name()
 	name_key := fmt.Sprintf("%s#%s:name", str_wofid, source)
 
-	_, err = conn.Do("SET", source, name_key, "STRING", name)
+	_, err = conn.Do("SET", collection, name_key, "STRING", name)
 
 	if err != nil {
 		fmt.Printf("FAILED to set name on %s because, %v\n", name_key, err)

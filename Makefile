@@ -24,6 +24,7 @@ deps:   self
 fmt:
 	go fmt cmd/*.go
 	go fmt index/*.go
+	go fmt concordances/*.go
 
 bin:	self
 	@GOPATH=$(GOPATH) go build -o bin/wof-tile38-index cmd/wof-tile38-index.go
