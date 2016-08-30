@@ -12,8 +12,10 @@ import (
 func main() {
 
 	mode := flag.String("mode", "files", "...")
-
 	procs := flag.Int("procs", 200, "...")
+
+	geom := flag.String("geometry", "", "...")
+
 	collection := flag.String("collection", "", "...")
 	nfs_kludge := flag.Bool("nfs-kludge", false, "Enable the (walk.go) NFS kludge to ignore 'readdirent: errno' 523 errors")
 
@@ -33,6 +35,7 @@ func main() {
 	}
 
 	client.Debug = *debug
+	client.Geometry = *geom
 
 	args := flag.Args()
 

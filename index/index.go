@@ -2,6 +2,7 @@ package tile38
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/garyburd/redigo/redis"
@@ -17,8 +18,16 @@ import (
 	"sync"
 )
 
+type Coords []float64
+
+type Geometry struct {
+	Type        string `json:"type"`
+	Coordinates Coords `json:"coordinates"`
+}
+
 type Tile38Client struct {
 	Endpoint   string
+	Geometry   string
 	Placetypes *placetypes.WOFPlacetypes
 	Debug      bool
 }
@@ -36,6 +45,7 @@ func NewTile38Client(host string, port int) (*Tile38Client, error) {
 	client := Tile38Client{
 		Endpoint:   endpoint,
 		Placetypes: pt,
+		Geometry:   "", // use the default geojson geometry
 		Debug:      false,
 	}
 
@@ -72,9 +82,58 @@ func (client *Tile38Client) IndexFile(abs_path string, collection string) error 
 	}
 
 	body := feature.Body()
-	geom := body.Path("geometry")
 
-	str_geom := geom.String()
+	var str_geom string
+
+	log.Printf("WTF %s '%s' %t\n", abs_path, client.Geometry, client.Debug)
+
+	if client.Geometry == "" {
+
+		geom := body.Path("geometry")
+		str_geom = geom.String()
+
+	} else if client.Geometry == "centroid" {
+
+		// sudo put me in go-whosonfirst-geojson?
+		// (20160829/thisisaaronland)
+
+		var lat float64
+		var lon float64
+		var lat_ok bool
+		var lon_ok bool
+
+		lat, lat_ok = body.Path("properties.lbl:latitude").Data().(float64)
+		lon, lon_ok = body.Path("properties.lbl:longitude").Data().(float64)
+
+		if !lat_ok || !lon_ok {
+
+			lat, lat_ok = body.Path("properties.geom:latitude").Data().(float64)
+			lon, lon_ok = body.Path("properties.geom:longitude").Data().(float64)
+		}
+
+		if !lat_ok || !lon_ok {
+			return errors.New("can't find centroid")
+		}
+
+		coords := Coords{lon, lat}
+
+		geom := Geometry{
+			Type:        "geometry",
+			Coordinates: coords,
+		}
+
+		bytes, err := json.Marshal(geom)
+
+		if err != nil {
+			return err
+		}
+
+		str_geom = string(bytes)
+
+	} else {
+
+		return errors.New("unknown geometry filter")
+	}
 
 	conn, err := redis.Dial("tcp", client.Endpoint)
 
@@ -135,7 +194,13 @@ func (client *Tile38Client) IndexFile(abs_path string, collection string) error 
 	*/
 
 	if client.Debug {
-		log.Println("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "OBJECT", "...")
+
+		if client.Geometry == "" {
+			log.Println("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "OBJECT", "...")
+		} else {
+			log.Println("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "OBJECT", str_geom)
+		}
+
 		return nil
 	}
 
@@ -153,19 +218,6 @@ func (client *Tile38Client) IndexFile(abs_path string, collection string) error 
 	if err != nil {
 		fmt.Printf("FAILED to set name on %s because, %v\n", name_key, err)
 	}
-
-	/*
-		hiers := body.Path("properties.wof:hierarchy")
-		str_hiers := hiers.String()
-
-		hiers_key := str_wofid + ":hierarchy"
-
-		_, err = conn.Do("SET", *collection, hiers_key, "STRING", str_hiers)
-
-		if err != nil {
-			fmt.Printf("FAILED to set name on %s because, %v\n", hiers_key, err)
-		}
-	*/
 
 	return nil
 
