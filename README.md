@@ -32,6 +32,15 @@ Load times (anecdotal):
 2016/08/16 22:25:45 [INFO] AOF loaded 1681995 commands: 62.82s, 26773/s, 4 MB/s
 ```
 
+## Timings
+
+Where `whosonfirst-data-venue-ca` is just shy of 600,000 records.
+
+```
+time ./bin/wof-tile38-index -geometry centroid -collection whosonfirst-nearby -procs 200 -tile38-host 192.168.9.35 -mode directory /usr/local/data/whosonfirst-data-venue-ca/data/
+228.456u 92.439s 3:17.21 162.7%	      0+0k 4830456+0io 0pf+0w
+```
+
 ## See also
 
 * http://tile38.com

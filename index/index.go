@@ -85,8 +85,6 @@ func (client *Tile38Client) IndexFile(abs_path string, collection string) error 
 
 	var str_geom string
 
-	log.Printf("WTF %s '%s' %t\n", abs_path, client.Geometry, client.Debug)
-
 	if client.Geometry == "" {
 
 		geom := body.Path("geometry")
@@ -118,7 +116,7 @@ func (client *Tile38Client) IndexFile(abs_path string, collection string) error 
 		coords := Coords{lon, lat}
 
 		geom := Geometry{
-			Type:        "geometry",
+			Type:        "Point",
 			Coordinates: coords,
 		}
 
