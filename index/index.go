@@ -20,9 +20,16 @@ import (
 
 type Coords []float64
 
+type Polygon []Coords
+
 type Geometry struct {
 	Type        string `json:"type"`
 	Coordinates Coords `json:"coordinates"`
+}
+
+type GeometryPoly struct {
+	Type        string    `json:"type"`
+	Coordinates []Polygon `json:"coordinates"`
 }
 
 type Tile38Client struct {
@@ -89,6 +96,56 @@ func (client *Tile38Client) IndexFile(abs_path string, collection string) error 
 
 		geom := body.Path("geometry")
 		str_geom = geom.String()
+
+	} else if client.Geometry == "bbox" {
+
+		/*
+
+			This is not really the best way to deal with the problem since
+			we'll end up with an oversized bounding box. A better way would
+			be to store the bounding box for each polygon in the geom and
+			flag that in the key name. Which is easy but just requires tweaking
+			a few things and really I just want to see if this works at all
+			from a storage perspective right now (20160902/thisisaaronland)
+
+		*/
+
+		var swlon float64
+		var swlat float64
+		var nelon float64
+		var nelat float64
+
+		children, _ := body.S("bbox").Children()
+
+		swlon = children[0].Data().(float64)
+		swlat = children[1].Data().(float64)
+		nelon = children[2].Data().(float64)
+		nelat = children[3].Data().(float64)
+
+		poly := Polygon{
+			Coords{swlon, swlat},
+			Coords{swlon, nelat},
+			Coords{nelon, nelat},
+			Coords{nelon, swlat},
+			Coords{swlon, swlat},
+		}
+
+		polys := []Polygon{
+			poly,
+		}
+
+		geom := GeometryPoly{
+			Type:        "Polygon",
+			Coordinates: polys,
+		}
+
+		bytes, err := json.Marshal(geom)
+
+		if err != nil {
+			return err
+		}
+
+		str_geom = string(bytes)
 
 	} else if client.Geometry == "centroid" {
 
