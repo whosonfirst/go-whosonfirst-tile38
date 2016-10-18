@@ -16,16 +16,16 @@ import (
 
 func main() {
 
-	mode := flag.String("mode", "files", "...")
+	mode := flag.String("mode", "files", "The mode to use importing data. Valid options are: directory, filelist and files.")
 
-	procs := flag.Int("procs", 200, "...")
-	collection := flag.String("collection", "", "...")
+	procs := flag.Int("procs", 200, "The number of concurrent processes to use importing data.")
+	collection := flag.String("collection", "", "The name of the Tile38 collection for indexing data.")
 	nfs_kludge := flag.Bool("nfs-kludge", false, "Enable the (walk.go) NFS kludge to ignore 'readdirent: errno' 523 errors")
 
-	debug := flag.Bool("debug", false, "...")
+	debug := flag.Bool("debug", false, "Go through all the motions but don't actually index anything.")
 
-	tile38_host := flag.String("tile38-host", "localhost", "...")
-	tile38_port := flag.Int("tile38-port", 9851, "...")
+	tile38_host := flag.String("tile38-host", "localhost", "The host of your Tile-38 server.")
+	tile38_port := flag.Int("tile38-port", 9851, "The port of your Tile38 server.")
 
 	flag.Parse()
 
