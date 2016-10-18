@@ -18,6 +18,12 @@ import (
 	"sync"
 )
 
+type Meta struct {
+	Name     string `json:"wof:name"`
+	Country  string `json:"wof:country"`
+	ParentID int    `json:wof:parent_id"`
+}
+
 type Coords []float64
 
 type Polygon []Coords
@@ -75,8 +81,8 @@ func NewTile38Client(host string, port int) (*Tile38Client, error) {
 
 func (client *Tile38Client) IndexFile(abs_path string, collection string) error {
 
-	# check to see if this is an alt file
-     	# https://github.com/whosonfirst/go-whosonfirst-tile38/issues/1
+	// check to see if this is an alt file
+	// https://github.com/whosonfirst/go-whosonfirst-tile38/issues/1
 
 	feature, err := geojson.UnmarshalFile(abs_path)
 
@@ -268,13 +274,44 @@ func (client *Tile38Client) IndexFile(abs_path string, collection string) error 
 		return err
 	}
 
-	name := feature.Name()
-	name_key := str_wofid + ":name"
+	/*
+		name := feature.Name()
+		name_key := str_wofid + ":name"
 
-	_, err = conn.Do("SET", collection, name_key, "STRING", name)
+		_, err = conn.Do("SET", collection, name_key, "STRING", name)
+
+		if err != nil {
+			fmt.Printf("FAILED to set name on %s because, %v\n", name_key, err)
+		}
+	*/
+
+	// when in doubt check here:
+	// https://github.com/whosonfirst/whosonfirst-www-api/blob/master/www/include/lib_whosonfirst_spatial.php#L160
+
+	name := feature.Name()
+	country := ""
+	parent := -1
+
+	meta_key := str_wofid + ":meta"
+
+	meta := Meta{
+		Name:     name,
+		Country:  country,
+		ParentID: parent,
+	}
+
+	meta_json, err := json.Marshal(meta)
 
 	if err != nil {
-		fmt.Printf("FAILED to set name on %s because, %v\n", name_key, err)
+		log.Printf("FAILED to marshal JSON on %s because, %v\n", meta_key, err)
+		return err
+	}
+
+	_, err = conn.Do("SET", collection, meta_key, "STRING", string(meta_json))
+
+	if err != nil {
+		log.Printf("FAILED to set meta on %s because, %v\n", meta_key, err)
+		return err
 	}
 
 	return nil
