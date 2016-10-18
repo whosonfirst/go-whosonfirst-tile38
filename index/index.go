@@ -75,6 +75,9 @@ func NewTile38Client(host string, port int) (*Tile38Client, error) {
 
 func (client *Tile38Client) IndexFile(abs_path string, collection string) error {
 
+	# check to see if this is an alt file
+     	# https://github.com/whosonfirst/go-whosonfirst-tile38/issues/1
+
 	feature, err := geojson.UnmarshalFile(abs_path)
 
 	if err != nil {
