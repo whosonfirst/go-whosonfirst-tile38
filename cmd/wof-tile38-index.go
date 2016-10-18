@@ -11,19 +11,18 @@ import (
 
 func main() {
 
-	mode := flag.String("mode", "files", "...")
-	procs := flag.Int("procs", 200, "...")
-
-	geom := flag.String("geometry", "", "...")
-
-	collection := flag.String("collection", "", "...")
+	mode := flag.String("mode", "files", "The mode to use importing data. Valid options are: directory, filelist and files.")
+	geom := flag.String("geometry", "", "Which geometry to index. Valid options are: centroid, bbox or whatever is in the default GeoJSON geometry (\"\").")
+	
+	procs := flag.Int("procs", 200, "The number of concurrent processes to use importing data.")
+	collection := flag.String("collection", "", "The name of the Tile38 collection for indexing data.")
 	nfs_kludge := flag.Bool("nfs-kludge", false, "Enable the (walk.go) NFS kludge to ignore 'readdirent: errno' 523 errors")
 
-	debug := flag.Bool("debug", false, "...")
+	tile38_host := flag.String("tile38-host", "localhost", "The host of your Tile-38 server.")
+	tile38_port := flag.Int("tile38-port", 9851, "The port of your Tile38 server.")
 
-	tile38_host := flag.String("tile38-host", "localhost", "...")
-	tile38_port := flag.Int("tile38-port", 9851, "...")
-
+	debug := flag.Bool("debug", false, "Go through all the motions but don't actually index anything.")
+	
 	flag.Parse()
 
 	runtime.GOMAXPROCS(*procs)
