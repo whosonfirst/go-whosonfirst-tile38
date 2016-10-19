@@ -265,28 +265,17 @@ func (client *Tile38Client) IndexFile(abs_path string, collection string) error 
 			log.Println("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "OBJECT", str_geom)
 		}
 
-		return nil
-	}
+	} else {
 
-	_, err = conn.Do("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "OBJECT", str_geom)
-
-	if err != nil {
-		return err
-	}
-
-	/*
-		name := feature.Name()
-		name_key := str_wofid + ":name"
-
-		_, err = conn.Do("SET", collection, name_key, "STRING", name)
+		_, err = conn.Do("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "OBJECT", str_geom)
 
 		if err != nil {
-			fmt.Printf("FAILED to set name on %s because, %v\n", name_key, err)
+			return err
 		}
-	*/
+	}
 
-	// when in doubt check here:
 	// https://github.com/whosonfirst/whosonfirst-www-api/blob/master/www/include/lib_whosonfirst_spatial.php#L160
+	// when in doubt check here... also, please make me configurable... maybe? (20161017/thisisaaroland)
 
 	meta_key := str_wofid + ":meta"
 
@@ -318,7 +307,15 @@ func (client *Tile38Client) IndexFile(abs_path string, collection string) error 
 		return err
 	}
 
-	_, err = conn.Do("SET", collection, meta_key, "STRING", string(meta_json))
+	// See the way we are assigning the meta information to the same collection as the spatial
+	// information? We may not always do that (maybe should never do that) but today we do do
+	// that... (20161017/thisisaaronland)
+
+	if client.Debug {
+		log.Println("SET", collection, meta_key, "STRING", string(meta_json))
+	} else {
+		_, err = conn.Do("SET", collection, meta_key, "STRING", string(meta_json))
+	}
 
 	if err != nil {
 		log.Printf("FAILED to set meta on %s because, %v\n", meta_key, err)
