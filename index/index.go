@@ -288,11 +288,22 @@ func (client *Tile38Client) IndexFile(abs_path string, collection string) error 
 	// when in doubt check here:
 	// https://github.com/whosonfirst/whosonfirst-www-api/blob/master/www/include/lib_whosonfirst_spatial.php#L160
 
-	name := feature.Name()
-	country := ""
-	parent := -1
-
 	meta_key := str_wofid + ":meta"
+
+	name := feature.Name()
+	country, ok := feature.StringProperty("wof:country")
+
+	if !ok {
+		log.Printf("FAILED to determine country for %s\n", meta_key)
+		country = "XX"
+	}
+
+	parent, ok := feature.IntProperty("wof:parent_id")
+
+	if !ok {
+		log.Printf("FAILED to determine parent ID for %s\n", meta_key)
+		parent = -1
+	}
 
 	meta := Meta{
 		Name:     name,
