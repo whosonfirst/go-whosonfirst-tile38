@@ -19,9 +19,8 @@ import (
 )
 
 type Meta struct {
-	Name     string `json:"wof:name"`
-	Country  string `json:"wof:country"`
-	ParentID int    `json:wof:parent_id"`
+	Name    string `json:"wof:name"`
+	Country string `json:"wof:country"`
 }
 
 type Coords []float64
@@ -244,6 +243,13 @@ func (client *Tile38Client) IndexFile(abs_path string, collection string) error 
 
 	key := str_wofid + "#" + repo
 
+	parent, ok := feature.IntProperty("wof:parent_id")
+
+	if !ok {
+		log.Printf("FAILED to determine parent ID for %s\n", key)
+		parent = -1
+	}
+
 	/*
 
 		The conn.Do method takes a string command and then a "..." of interface{} thingies
@@ -260,14 +266,14 @@ func (client *Tile38Client) IndexFile(abs_path string, collection string) error 
 	if client.Debug {
 
 		if client.Geometry == "" {
-			log.Println("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "OBJECT", "...")
+			log.Println("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "FIELD", "wof:parent_id", parent, "OBJECT", "...")
 		} else {
-			log.Println("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "OBJECT", str_geom)
+			log.Println("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "FIELD", "wof:parent_id", parent, "OBJECT", str_geom)
 		}
 
 	} else {
 
-		_, err = conn.Do("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "OBJECT", str_geom)
+		_, err = conn.Do("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "FIELD", "wof:parent_id", parent, "OBJECT", str_geom)
 
 		if err != nil {
 			return err
@@ -275,9 +281,9 @@ func (client *Tile38Client) IndexFile(abs_path string, collection string) error 
 	}
 
 	// https://github.com/whosonfirst/whosonfirst-www-api/blob/master/www/include/lib_whosonfirst_spatial.php#L160
-	// when in doubt check here... also, please make me configurable... maybe? (20161017/thisisaaroland)
+	// When in doubt check here... also, please make me configurable... maybe? (20161017/thisisaaroland)
 
-	meta_key := str_wofid + ":meta"
+	meta_key := str_wofid + "#meta"
 
 	name := feature.Name()
 	country, ok := feature.StringProperty("wof:country")
@@ -287,17 +293,9 @@ func (client *Tile38Client) IndexFile(abs_path string, collection string) error 
 		country = "XX"
 	}
 
-	parent, ok := feature.IntProperty("wof:parent_id")
-
-	if !ok {
-		log.Printf("FAILED to determine parent ID for %s\n", meta_key)
-		parent = -1
-	}
-
 	meta := Meta{
-		Name:     name,
-		Country:  country,
-		ParentID: parent,
+		Name:    name,
+		Country: country,
 	}
 
 	meta_json, err := json.Marshal(meta)
