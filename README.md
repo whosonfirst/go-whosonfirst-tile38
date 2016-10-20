@@ -4,42 +4,77 @@ Go tools for working with Who's On First documents and [Tile38](http://tile38.co
 
 ## Caveat
 
-This is experimental, still.
+This is tilting towards ready on the experimental-to-ready scale, but isn't quite there yet.
 
-## Requirements
+## Install
 
-Here's what things look like after indexing 15M Who's On First records in a vanilla instance of Tile38. 
-
-```
-127.0.0.1:9851> STATS whosonfirst
-{"ok":true,"stats":[{"in_memory_size":5624824430,"num_objects":15148756,"num_points":225332409}],"elapsed":"76.19µs"}
-
-127.0.0.1:9851> SERVER
-{"ok":true,"stats":{"aof_size":11111797665,"avg_item_size":43,"heap_size":9794365216,"id":"c5ce956e83931f71774a48d2eccfcb19","in_memory_size":5624824430,"max_heap_size":0,"num_collections":1,"num_hooks":0,"num_objects":15148756,"num_points":225332409,"pointer_size":8,"read_only":false},"elapsed":"13.772854ms"}
-```
-
-And this:
+You will need to have both `Go` and the `make` programs installed on your computer. Assuming you do just type:
 
 ```
-du -h /mnt/data/appendonly.aof 
-11G     /mnt/data/appendonly.aof
+make bin
 ```
 
-Load times (anecdotal):
+All of this package's dependencies are bundled with the code in the `vendor` directory.
+
+## Utilities
+
+### wof-tile38-index
 
 ```
-2016/08/16 22:24:42 [INFO] Server started, Tile38 version 0.0.0, git 0000000
-2016/08/16 22:25:45 [INFO] AOF loaded 1681995 commands: 62.82s, 26773/s, 4 MB/s
+./bin/wof-tile38-index -h
+Usage of ./bin/wof-tile38-index:
+  -collection string
+    	The name of the Tile38 collection for indexing data.
+  -debug
+    	Go through all the motions but don't actually index anything.
+  -geometry string
+    	Which geometry to index. Valid options are: centroid, bbox or whatever is in the default GeoJSON geometry ("").
+  -mode string
+    	The mode to use importing data. Valid options are: directory, filelist and files. (default "files")
+  -nfs-kludge
+    	Enable the (walk.go) NFS kludge to ignore 'readdirent: errno' 523 errors
+  -procs int
+    	The number of concurrent processes to use importing data. (default 200)
+  -tile38-host string
+    	The host of your Tile-38 server. (default "localhost")
+  -tile38-port int
+    	The port of your Tile38 server. (default 9851)
 ```
 
-## Timings
+### wof-tile38-index-concordances
 
-Where `whosonfirst-data-venue-ca` is just shy of 600,000 records.
+_Honestly, I can't even remember what this does. It will probably go away soon._
 
-```
-time ./bin/wof-tile38-index -geometry centroid -collection whosonfirst-nearby -procs 200 -tile38-host 192.168.9.35 -mode directory /usr/local/data/whosonfirst-data-venue-ca/data/
-228.456u 92.439s 3:17.21 162.7%	      0+0k 4830456+0io 0pf+0w
-```
+## Indexing
+
+There are a few important things to remember about indexing:
+
+1. This is very much Who's On First (Mapzen) specific
+2. The goal is to index _as little_ extra information as possible which ensuring the ability to generate a "minimal viable WOF record" and to perform basic container-ish (belongs to, placetype, etc.) queries.
+3. Those details are still a moving target.
+4. To whit, see the way we're encoding the repository name in to the first key itself? That is perhaps unnecessary.
+5. Whatever else this package holds hands with, now or in the future, it currently holds hands (tightly) with the `lib_whosonfirst_spatial.php` library in the [whosonfirst-www-api](https://github.com/whosonfirst/whosonfirst-www-api) repo.
+
+### _WOFID_ + "#" + _REPO_NAME_
+
+This stores a record's geometry (which may be a centroid or the actual GeoJSON `geometry` property) as well as the following numeric IDs:
+
+* wof:id
+* wof:placetype_id
+* wof:parent_id
+
+This we probably _should_ store but aren't yet:
+
+* mz:is_current
+* wof:is_deprecated
+* wof:is_superseded
+
+### _WOFID_ + "#meta"
+
+This stores a following fields as a JSON encoded dictionary:
+
+* wof:name
+* wof:country
 
 ## See also
 
