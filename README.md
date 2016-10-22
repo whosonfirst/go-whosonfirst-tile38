@@ -47,7 +47,7 @@ For example, if you wanted to index [all the localities](https://whosonfirst.map
 
 ```
 $> wget https://whosonfirst.mapzen.com/bundles/wof-locality-latest-bundle.tar.bz2
-$> tar -xvzf wof-locality-latest-bundle.tar.bz2
+$> tar -xvjf wof-locality-latest-bundle.tar.bz2
 $> wof-tile38-index -procs 200 -collection whosonfirst-geom -procs 200 -mode directory wof-locality-latest-bundle/data/
 ```
 
