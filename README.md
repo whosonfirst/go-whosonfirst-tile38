@@ -44,7 +44,7 @@ Usage of ./bin/wof-tile38-index:
 For example:
 
 ```
-$> wof-tile38-index -procs 200 -collection whosonfirst-geom -procs 200 /path/to/whosonfirst/data/
+$> wof-tile38-index -procs 200 -collection whosonfirst-geom -procs 200 -mode directory /path/to/whosonfirst/data/
 ```
 
 ### wof-tile38-index-concordances
