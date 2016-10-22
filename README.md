@@ -76,6 +76,7 @@ This stores a record's geometry (which may be a centroid or the actual GeoJSON `
 This we probably _should_ store but aren't yet:
 
 * mz:is_current
+* mz:scale_rank
 * wof:is_deprecated
 * wof:is_superseded
 
