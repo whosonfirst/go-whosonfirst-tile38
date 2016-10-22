@@ -41,10 +41,14 @@ Usage of ./bin/wof-tile38-index:
     	The port of your Tile38 server. (default 9851)
 ```
 
-For example:
+#### Example
+
+For example, if you wanted to index [all the localities](https://whosonfirst.mapzen.com/bundles/#placetypes-common) in Who's On First:
 
 ```
-$> wof-tile38-index -procs 200 -collection whosonfirst-geom -procs 200 -mode directory /path/to/whosonfirst/data/
+$> wget https://whosonfirst.mapzen.com/bundles/wof-locality-latest-bundle.tar.bz2
+$> tar -xvzf wof-locality-latest-bundle.tar.bz2
+$> wof-tile38-index -procs 200 -collection whosonfirst-geom -procs 200 -mode directory wof-locality-latest-bundle/data/
 ```
 
 ### wof-tile38-index-concordances
