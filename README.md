@@ -41,6 +41,12 @@ Usage of ./bin/wof-tile38-index:
     	The port of your Tile38 server. (default 9851)
 ```
 
+For example:
+
+```
+$> wof-tile38-index -procs 200 -collection whosonfirst-geom -procs 200 /path/to/whosonfirst/data/
+```
+
 ### wof-tile38-index-concordances
 
 _Honestly, I can't even remember what this does. It will probably go away soon._
