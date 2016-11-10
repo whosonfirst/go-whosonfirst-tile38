@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"strings"
 )
 
 func main() {
@@ -30,7 +31,7 @@ func main() {
 	client, err := tile38.NewTile38Client(*tile38_host, *tile38_port)
 
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	client.Debug = *debug
@@ -47,6 +48,28 @@ func main() {
 		} else if *mode == "filelist" {
 
 			err = client.IndexFileList(path, *collection)
+
+		} else if *mode == "meta" {
+
+			parts := strings.Split(path, ":")
+
+			if len(parts) != 2 {
+				log.Fatal("Invalid path declaration for a meta file")
+			}
+
+			for _, p := range parts {
+
+				_, err := os.Stat(p)
+
+				if os.IsNotExist(err) {
+					log.Fatal("Path does not exist", p)
+				}
+			}
+
+			meta_file := parts[0]
+			data_root := parts[1]
+
+			err = client.IndexMetaFile(meta_file, *collection, data_root)
 
 		} else {
 

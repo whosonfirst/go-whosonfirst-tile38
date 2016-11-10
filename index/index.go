@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"github.com/whosonfirst/go-whosonfirst-crawl"
+	"github.com/whosonfirst/go-whosonfirst-csv"
 	"github.com/whosonfirst/go-whosonfirst-geojson"
 	"github.com/whosonfirst/go-whosonfirst-placetypes"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -322,6 +324,66 @@ func (client *Tile38Client) IndexFile(abs_path string, collection string) error 
 
 	return nil
 
+}
+
+func (client *Tile38Client) IndexMetaFile(csv_path string, collection string, data_root string) error {
+
+	reader, err := csv.NewDictReaderFromPath(csv_path)
+
+	if err != nil {
+		return err
+	}
+
+	count := runtime.GOMAXPROCS(0) // perversely this is how we get the count...
+	ch := make(chan bool, count)
+
+	go func() {
+		for i := 0; i < count; i++ {
+			ch <- true
+		}
+	}()
+
+	wg := new(sync.WaitGroup)
+
+	for {
+		row, err := reader.Read()
+
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			return err
+		}
+
+		rel_path, ok := row["path"]
+
+		if !ok {
+			msg := fmt.Sprintf("missing 'path' column in meta file")
+			return errors.New(msg)
+		}
+
+		abs_path := filepath.Join(data_root, rel_path)
+
+		<-ch
+
+		wg.Add(1)
+
+		go func(ch chan bool) {
+
+			defer func() {
+				wg.Done()
+				ch <- true
+			}()
+
+			client.IndexFile(abs_path, collection)
+
+		}(ch)
+	}
+
+	wg.Wait()
+
+	return nil
 }
 
 func (client *Tile38Client) IndexDirectory(abs_path string, collection string, nfs_kludge bool) error {
