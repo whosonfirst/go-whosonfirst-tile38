@@ -67,7 +67,7 @@ There are a few important things to remember about indexing:
 2. The goal is to index _as little_ extra information as possible which ensuring the ability to generate a "minimal viable WOF record" and to perform basic container-ish (belongs to, placetype, etc.) queries.
 3. Those details are still a moving target.
 4. To whit, see the way we're encoding the repository name in to the first key itself? That is perhaps unnecessary.
-5. Whatever else this package holds hands with, now or in the future, it currently holds hands (tightly) with the `lib_whosonfirst_spatial.php` library in the [whosonfirst-www-api](https://github.com/whosonfirst/whosonfirst-www-api) repo.
+5. Whatever else this package holds hands with, now or in the future, it currently holds hands (tightly) with the `lib_whosonfirst_spatial.php` library in the [whosonfirst-www-api](https://github.com/whosonfirst/whosonfirst-www-api) repo and the [py-mapzen-whosonfirst-tile38](https://github.com/whosonfirst/py-mapzen-whosonfirst-tile38) library.
 
 ### _WOFID_ + "#" + _REPO_NAME_
 
@@ -76,13 +76,13 @@ This stores a record's geometry (which may be a centroid or the actual GeoJSON `
 * wof:id
 * wof:placetype_id
 * wof:parent_id
+* wof:is_deprecated	(stored as `0` or `1`)
+* wof:is_superseded	(stored as `0` or `1`)
 
 This we probably _should_ store but aren't yet:
 
 * mz:is_current
 * mz:scale_rank
-* wof:is_deprecated
-* wof:is_superseded
 
 ### _WOFID_ + "#meta"
 
