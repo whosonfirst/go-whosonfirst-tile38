@@ -252,6 +252,17 @@ func (client *Tile38Client) IndexFile(abs_path string, collection string) error 
 		parent = -1
 	}
 
+	is_superseded := 0
+	is_deprecated := 0
+
+	if feature.Deprecated() {
+		is_deprecated = 1
+	}
+
+	if feature.Superseded() {
+		is_superseded = 1
+	}
+
 	/*
 
 		The conn.Do method takes a string command and then a "..." of interface{} thingies
@@ -268,14 +279,14 @@ func (client *Tile38Client) IndexFile(abs_path string, collection string) error 
 	if client.Debug {
 
 		if client.Geometry == "" {
-			log.Println("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "FIELD", "wof:parent_id", parent, "OBJECT", "...")
+			log.Println("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "FIELD", "wof:parent_id", parent, "FIELD", "wof:is_superseded", is_superseded, "FIELD", "wof:is_deprecated", is_deprecated, "OBJECT", "...")
 		} else {
-			log.Println("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "FIELD", "wof:parent_id", parent, "OBJECT", str_geom)
+			log.Println("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "FIELD", "wof:parent_id", parent, "FIELD", "wof:is_superseded", is_superseded, "FIELD", "wof:is_deprecated", is_deprecated, "OBJECT", str_geom)
 		}
 
 	} else {
 
-		_, err = conn.Do("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "FIELD", "wof:parent_id", parent, "OBJECT", str_geom)
+		_, err = conn.Do("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "FIELD", "wof:parent_id", parent, "FIELD", "wof:is_superseded", is_superseded, "FIELD", "wof:is_deprecated", is_deprecated, "OBJECT", str_geom)
 
 		if err != nil {
 			return err
