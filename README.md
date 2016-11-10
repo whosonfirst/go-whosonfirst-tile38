@@ -59,10 +59,6 @@ $> wof-tile38-index -collection whosonfirst-geom -mode meta /usr/local/data/whos
 
 The syntax for listing meta files to index is a pair of filesystem paths separated by a `:`. The first path is the path to the meta file and the second is the path to the directory containing the actual GeoJSON files. As of this writing it is assumed that the paths listed in the meta files are relative.
 
-### wof-tile38-index-concordances
-
-_Honestly, I can't even remember what this does. It will probably go away soon._
-
 ## Indexing
 
 There are a few important things to remember about indexing:

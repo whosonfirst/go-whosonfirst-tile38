@@ -10,7 +10,6 @@ self:   prep
 	if test -d src/github.com/whosonfirst/go-whosonfirst-tile38; then rm -rf src/github.com/whosonfirst/go-whosonfirst-tile38; fi
 	mkdir -p src/github.com/whosonfirst/go-whosonfirst-tile38
 	cp -r index src/github.com/whosonfirst/go-whosonfirst-tile38/index
-	cp -r concordances src/github.com/whosonfirst/go-whosonfirst-tile38/concordances
 	cp -r vendor/src/* src/
 
 rmdeps:
@@ -33,8 +32,6 @@ vendor-deps: rmdeps deps
 fmt:
 	go fmt cmd/*.go
 	go fmt index/*.go
-	go fmt concordances/*.go
 
 bin:	self
 	@GOPATH=$(GOPATH) go build -o bin/wof-tile38-index cmd/wof-tile38-index.go
-	@GOPATH=$(GOPATH) go build -o bin/wof-tile38-index-concordances cmd/wof-tile38-index-concordances.go
