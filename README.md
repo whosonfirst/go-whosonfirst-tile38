@@ -51,6 +51,14 @@ $> tar -xvjf wof-locality-latest-bundle.tar.bz2
 $> wof-tile38-index -procs 200 -collection whosonfirst-geom -procs 200 -mode directory wof-locality-latest-bundle/data/
 ```
 
+If you wanted to index one or more Who's On First "meta" files (they're just CSV files with a `path` column) you might do something like:
+
+```
+$> wof-tile38-index -collection whosonfirst-geom -mode meta /usr/local/data/whosonfirst-data/meta/wof-county-latest.csv:/usr/local/data/whosonfirst-data/data
+```
+
+The syntax for listing meta files to index is a pair of filesystem paths separated by a `:`. The first path is the path to the meta file and the second is the path to the directory containing the actual GeoJSON files. As of this writing it is assumed that the paths listed in the meta files are relative.
+
 ### wof-tile38-index-concordances
 
 _Honestly, I can't even remember what this does. It will probably go away soon._
