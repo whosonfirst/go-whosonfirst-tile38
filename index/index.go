@@ -20,9 +20,12 @@ import (
 	"sync"
 )
 
+type WOFHierarchy map[string]int
+
 type Meta struct {
-	Name    string `json:"wof:name"`
-	Country string `json:"wof:country"`
+	Name      string         `json:"wof:name"`
+	Country   string         `json:"wof:country"`
+	Hierarchy []WOFHierarchy `json:"wof:hierarchy"`
 }
 
 type Coords []float64
@@ -306,9 +309,17 @@ func (client *Tile38Client) IndexFile(abs_path string, collection string) error 
 		country = "XX"
 	}
 
+	hiers := make([]WOFHierarchy, 0)
+
+	// Why doesn't this work? (20161110/thisisaaronland)
+	// b := feature.Body()
+	// children, _ := b.S("properties.wof:hierarchy").Children()
+	// log.Println(len(children))
+
 	meta := Meta{
-		Name:    name,
-		Country: country,
+		Name:      name,
+		Country:   country,
+		Hierarchy: hiers,
 	}
 
 	meta_json, err := json.Marshal(meta)
