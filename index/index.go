@@ -92,12 +92,13 @@ func (client *Tile38Client) IndexFile(abs_path string, collection string) error 
 		return err
 	}
 
+	return client.IndexFeature(feature, collection)
+}
+
+func (client *Tile38Client) IndexFeature(feature *geojson.WOFFeature, collection string) error {
+
 	wofid := feature.Id()
 	str_wofid := strconv.Itoa(wofid)
-
-	if err != nil {
-		return err
-	}
 
 	body := feature.Body()
 
