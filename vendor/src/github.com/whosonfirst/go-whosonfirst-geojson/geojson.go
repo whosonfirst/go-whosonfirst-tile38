@@ -212,6 +212,32 @@ func (wof WOFFeature) Superseded() bool {
 	return false
 }
 
+func (wof WOFFeature) Hierarchy() []map[string]int {
+
+	hierarchies := make([]map[string]int, 0)
+
+	body := wof.Body()
+
+	str_hierarchies := body.Path("properties.wof:hierarchy")
+
+	children, _ := str_hierarchies.Children()
+
+	for _, _hierarchy := range children {
+
+		hier := make(map[string]int)
+
+		_hier, _ := _hierarchy.S().ChildrenMap()
+
+		for k, v := range _hier {
+			hier[k] = int(v.Data().(float64))
+		}
+
+		hierarchies = append(hierarchies, hier)
+	}
+
+	return hierarchies
+}
+
 func (wof WOFFeature) placetype(path string) (string, bool) {
 
 	return wof.StringValue(path)
