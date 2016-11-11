@@ -90,6 +90,7 @@ This stores a following fields as a JSON encoded dictionary:
 
 * wof:name
 * wof:country
+* wof:hierarchy
 
 ## See also
 
