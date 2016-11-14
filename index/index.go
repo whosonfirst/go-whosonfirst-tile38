@@ -218,7 +218,7 @@ func (client *Tile38Client) IndexFeature(feature *geojson.WOFFeature, collection
 	conn := client.pool.Get()
 	defer conn.Close()
 
-	log.Println("number of active connections", client.pool.ActiveCount())
+	// log.Println("number of active connections", client.pool.ActiveCount())
 
 	placetype := feature.Placetype()
 
