@@ -18,6 +18,7 @@ import (
 	"runtime"
 	"strconv"
 	"sync"
+	"time"
 )
 
 type Meta struct {
@@ -66,7 +67,27 @@ func NewTile38Client(host string, port int) (*Tile38Client, error) {
 
 	defer conn.Close()
 
-	_, err = conn.Do("PING")
+	// because this:
+	// https://github.com/whosonfirst/go-whosonfirst-tile38/issues/8
+
+	tries := 0
+	max_tries := 5
+
+	for tries < max_tries {
+
+		log.Println("ping", tries)
+
+		tries += 1
+
+		_, err = conn.Do("PING")
+
+		if err == nil {
+			log.Println("pong")
+			break
+		}
+
+		time.Sleep(time.Second * 1)
+	}
 
 	if err != nil {
 		return nil, err
