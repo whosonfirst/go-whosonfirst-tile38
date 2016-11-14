@@ -45,6 +45,7 @@ type Tile38Client struct {
 	Geometry   string
 	Placetypes *placetypes.WOFPlacetypes
 	Debug      bool
+	pool       *redis.Pool
 }
 
 func NewTile38Client(host string, port int) (*Tile38Client, error) {
@@ -57,14 +58,7 @@ func NewTile38Client(host string, port int) (*Tile38Client, error) {
 
 	endpoint := fmt.Sprintf("%s:%d", host, port)
 
-	client := Tile38Client{
-		Endpoint:   endpoint,
-		Placetypes: pt,
-		Geometry:   "", // use the default geojson geometry
-		Debug:      false,
-	}
-
-	conn, err := redis.Dial("tcp", client.Endpoint)
+	conn, err := redis.Dial("tcp", endpoint)
 
 	if err != nil {
 		return nil, err
@@ -76,6 +70,25 @@ func NewTile38Client(host string, port int) (*Tile38Client, error) {
 
 	if err != nil {
 		return nil, err
+	}
+
+	pool := &redis.Pool{
+		MaxActive: 1000,
+		Dial: func() (redis.Conn, error) {
+			c, err := redis.Dial("tcp", endpoint)
+			if err != nil {
+				return nil, err
+			}
+			return c, err
+		},
+	}
+
+	client := Tile38Client{
+		Endpoint:   endpoint,
+		Placetypes: pt,
+		Geometry:   "", // use the default geojson geometry
+		Debug:      false,
+		pool:       pool,
 	}
 
 	return &client, nil
@@ -202,13 +215,10 @@ func (client *Tile38Client) IndexFeature(feature *geojson.WOFFeature, collection
 		return errors.New("unknown geometry filter")
 	}
 
-	conn, err := redis.Dial("tcp", client.Endpoint)
-
-	if err != nil {
-		return err
-	}
-
+	conn := client.pool.Get()
 	defer conn.Close()
+
+	log.Println("number of active connections", client.pool.ActiveCount())
 
 	placetype := feature.Placetype()
 
