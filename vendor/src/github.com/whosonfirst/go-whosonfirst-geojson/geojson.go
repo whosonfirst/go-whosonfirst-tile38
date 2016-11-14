@@ -229,7 +229,49 @@ func (wof WOFFeature) Hierarchy() []map[string]int {
 		_hier, _ := _hierarchy.S().ChildrenMap()
 
 		for k, v := range _hier {
-			hier[k] = int(v.Data().(float64))
+
+			// good times... this needs to be put in a function somewhere
+			// (20161113/thisisaaronland)
+
+			var id int
+			var ok bool
+
+			id_float, ok := v.Data().(float64)
+
+			if ok {
+				id = int(id_float)
+			}
+
+			if !ok {
+
+				id_int, ok := v.Data().(int)
+
+				if ok {
+					id = id_int
+				}
+			}
+
+			if !ok {
+
+				str_id, ok := v.Data().(string)
+
+				if ok {
+
+					strconv_id, err := strconv.Atoi(str_id)
+
+					if err == nil {
+						id = strconv_id
+					} else {
+						ok = false
+					}
+				}
+			}
+
+			if !ok {
+				id = 0
+			}
+
+			hier[k] = id
 		}
 
 		hierarchies = append(hierarchies, hier)

@@ -31,7 +31,7 @@ func main() {
 	client, err := tile38.NewTile38Client(*tile38_host, *tile38_port)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to create Tile38Client (%s:%d) because %v", *tile38_host, *tile38_port, err)
 	}
 
 	client.Debug = *debug
