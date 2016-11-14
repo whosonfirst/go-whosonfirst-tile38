@@ -72,6 +72,9 @@ func NewTile38Client(host string, port int) (*Tile38Client, error) {
 		return nil, err
 	}
 
+	// https://stackoverflow.com/questions/37828284/redigo-getting-dial-tcp-connect-cannot-assign-requested-address
+	// https://godoc.org/github.com/garyburd/redigo/redis#NewPool
+
 	pool := &redis.Pool{
 		MaxActive: 1000,
 		Dial: func() (redis.Conn, error) {
