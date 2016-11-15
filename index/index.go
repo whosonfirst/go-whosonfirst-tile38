@@ -59,14 +59,6 @@ func NewTile38Client(host string, port int) (*Tile38Client, error) {
 
 	endpoint := fmt.Sprintf("%s:%d", host, port)
 
-	conn, err := redis.Dial("tcp", endpoint)
-
-	if err != nil {
-		return nil, err
-	}
-
-	defer conn.Close()
-
 	// because this:
 	// https://github.com/whosonfirst/go-whosonfirst-tile38/issues/8
 
@@ -75,18 +67,22 @@ func NewTile38Client(host string, port int) (*Tile38Client, error) {
 
 	for tries < max_tries {
 
-		log.Println("ping", tries)
-
 		tries += 1
+
+		conn, err := redis.Dial("tcp", endpoint)
+
+		if err != nil {
+			time.Sleep(time.Second * 1)
+			continue
+		}
+
+		defer conn.Close()
 
 		_, err = conn.Do("PING")
 
-		if err == nil {
-			log.Println("pong")
-			break
+		if err != nil {
+			return nil, err
 		}
-
-		time.Sleep(time.Second * 1)
 	}
 
 	if err != nil {
