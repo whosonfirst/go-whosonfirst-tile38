@@ -46,6 +46,7 @@ type Tile38Client struct {
 	Geometry   string
 	Placetypes *placetypes.WOFPlacetypes
 	Debug      bool
+	Verbose    bool
 	pool       *redis.Pool
 }
 
@@ -308,7 +309,7 @@ func (client *Tile38Client) IndexFeature(feature *geojson.WOFFeature, collection
 
 	*/
 
-	if client.Debug {
+	if client.Verbose {
 
 		if client.Geometry == "" {
 			log.Println("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "FIELD", "wof:parent_id", parent, "FIELD", "wof:is_superseded", is_superseded, "FIELD", "wof:is_deprecated", is_deprecated, "OBJECT", "...")
@@ -316,9 +317,11 @@ func (client *Tile38Client) IndexFeature(feature *geojson.WOFFeature, collection
 			log.Println("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "FIELD", "wof:parent_id", parent, "FIELD", "wof:is_superseded", is_superseded, "FIELD", "wof:is_deprecated", is_deprecated, "OBJECT", str_geom)
 		}
 
-	} else {
+	}
 
-		_, err = conn.Do("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "FIELD", "wof:parent_id", parent, "FIELD", "wof:is_superseded", is_superseded, "FIELD", "wof:is_deprecated", is_deprecated, "OBJECT", str_geom)
+	if !client.Debug {
+
+		_, err := conn.Do("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "FIELD", "wof:parent_id", parent, "FIELD", "wof:is_superseded", is_superseded, "FIELD", "wof:is_deprecated", is_deprecated, "OBJECT", str_geom)
 
 		if err != nil {
 			return err
@@ -357,15 +360,22 @@ func (client *Tile38Client) IndexFeature(feature *geojson.WOFFeature, collection
 	// information? We may not always do that (maybe should never do that) but today we do do
 	// that... (20161017/thisisaaronland)
 
-	if client.Debug {
+	if client.Verbose {
 		log.Println("SET", collection, meta_key, "STRING", string(meta_json))
-	} else {
-		_, err = conn.Do("SET", collection, meta_key, "STRING", string(meta_json))
 	}
 
-	if err != nil {
-		log.Printf("FAILED to set meta on %s because, %v\n", meta_key, err)
-		return err
+	if !client.Debug {
+
+		_, err := conn.Do("SET", collection, meta_key, "STRING", string(meta_json))
+
+		if err != nil {
+			log.Printf("FAILED to set meta on %s because, %v\n", meta_key, err)
+			return err
+		}
+	}
+
+	if client.Verbose {
+		log.Println("OKAY", key, meta_key)
 	}
 
 	return nil

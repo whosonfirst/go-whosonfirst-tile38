@@ -22,9 +22,14 @@ func main() {
 	tile38_host := flag.String("tile38-host", "localhost", "The host of your Tile-38 server.")
 	tile38_port := flag.Int("tile38-port", 9851, "The port of your Tile38 server.")
 
+	verbose := flag.Bool("verbose", false, "Be chatty about what's happening. This is automatically enabled if the -debug flag is set.")
 	debug := flag.Bool("debug", false, "Go through all the motions but don't actually index anything.")
 
 	flag.Parse()
+
+	if *debug {
+		*verbose = true
+	}
 
 	runtime.GOMAXPROCS(*procs)
 
@@ -34,6 +39,7 @@ func main() {
 		log.Fatalf("failed to create Tile38Client (%s:%d) because %v", *tile38_host, *tile38_port, err)
 	}
 
+	client.Verbose = *verbose
 	client.Debug = *debug
 	client.Geometry = *geom
 
@@ -72,12 +78,11 @@ func main() {
 			err = client.IndexMetaFile(meta_file, *collection, data_root)
 
 		} else {
-
 			err = client.IndexFile(path, *collection)
 		}
 
 		if err != nil {
-			log.Fatalf("failed to index %s in %s mode, because %v", path, *mode, err)
+			log.Fatalf("failed to index '%s' in (%s) mode, because %v", path, *mode, err)
 		}
 	}
 
