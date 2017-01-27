@@ -24,7 +24,7 @@ import (
 type Meta struct {
 	Name      string           `json:"wof:name"`
 	Country   string           `json:"wof:country"`
-	Hierarchy []map[string]int `json:"wof:hierarchy"`
+	// Hierarchy []map[string]int `json:"wof:hierarchy"`
 }
 
 type Coords []float64
@@ -341,12 +341,12 @@ func (client *Tile38Client) IndexFeature(feature *geojson.WOFFeature, collection
 		country = "XX"
 	}
 
-	hier := feature.Hierarchy()
+	// hier := feature.Hierarchy()
 
 	meta := Meta{
 		Name:      name,
 		Country:   country,
-		Hierarchy: hier,
+		// Hierarchy: hier,
 	}
 
 	meta_json, err := json.Marshal(meta)
