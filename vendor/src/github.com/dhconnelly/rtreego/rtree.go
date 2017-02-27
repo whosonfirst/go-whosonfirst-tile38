@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// A library for efficiently storing and querying spatial data.
+// Package rtreego is a library for efficiently storing and querying spatial data.
 package rtreego
 
 import (
@@ -10,6 +10,13 @@ import (
 	"math"
 	"sort"
 )
+
+// Comparator compares two spatials and returns whether they are equal.
+type Comparator func(obj1, obj2 Spatial) (equal bool)
+
+func defaultComparator(obj1, obj2 Spatial) bool {
+	return obj1 == obj2
+}
 
 // Rtree represents an R-tree, a balanced search tree for storing and querying
 // spatial objects.  Dim specifies the number of spatial dimensions and
@@ -74,7 +81,7 @@ func (e entry) String() string {
 	return fmt.Sprintf("entry{bb: %v, obj: %v}", e.bb, e.obj)
 }
 
-// Any type that implements Spatial can be stored in an Rtree and queried.
+// Spatial is an interface for objects that can be stored in an Rtree and queried.
 type Spatial interface {
 	Bounds() *Rect
 }
@@ -323,19 +330,28 @@ func pickNext(left, right *node, entries []entry) (next int) {
 // Deletion
 
 // Delete removes an object from the tree.  If the object is not found, returns
-// false, otherwise returns true.
+// false, otherwise returns true. Uses the default comparator when checking
+// equality.
 //
 // Implemented per Section 3.3 of "R-trees: A Dynamic Index Structure for
 // Spatial Searching" by A. Guttman, Proceedings of ACM SIGMOD, p. 47-57, 1984.
 func (tree *Rtree) Delete(obj Spatial) bool {
-	n := tree.findLeaf(tree.root, obj)
+	return tree.DeleteWithComparator(obj, defaultComparator)
+}
+
+// DeleteWithComparator removes an object from the tree using a custom
+// comparator for evaluating equalness. This is useful when you want to remove
+// an object from a tree but don't have a pointer to the original object
+// anymore.
+func (tree *Rtree) DeleteWithComparator(obj Spatial, cmp Comparator) bool {
+	n := tree.findLeaf(tree.root, obj, cmp)
 	if n == nil {
 		return false
 	}
 
 	ind := -1
 	for i, e := range n.entries {
-		if e.obj == obj {
+		if cmp(e.obj, obj) {
 			ind = i
 		}
 	}
@@ -352,24 +368,26 @@ func (tree *Rtree) Delete(obj Spatial) bool {
 		tree.root = tree.root.entries[0].child
 	}
 
+	tree.height = tree.root.level
+
 	return true
 }
 
 // findLeaf finds the leaf node containing obj.
-func (tree *Rtree) findLeaf(n *node, obj Spatial) *node {
+func (tree *Rtree) findLeaf(n *node, obj Spatial, cmp Comparator) *node {
 	if n.leaf {
 		return n
 	}
 	// if not leaf, search all candidate subtrees
 	for _, e := range n.entries {
 		if e.bb.containsRect(obj.Bounds()) {
-			leaf := tree.findLeaf(e.child, obj)
+			leaf := tree.findLeaf(e.child, obj, cmp)
 			if leaf == nil {
 				continue
 			}
 			// check if the leaf actually contains the object
 			for _, leafEntry := range leaf.entries {
-				if leafEntry.obj == obj {
+				if cmp(leafEntry.obj, obj) {
 					return leaf
 				}
 			}
@@ -416,35 +434,46 @@ func (tree *Rtree) condenseTree(n *node) {
 
 // Searching
 
-// SearchIntersectBB returns all objects that intersect the specified rectangle.
-//
+// SearchIntersect returns all objects that intersect the specified rectangle.
 // Implemented per Section 3.1 of "R-trees: A Dynamic Index Structure for
 // Spatial Searching" by A. Guttman, Proceedings of ACM SIGMOD, p. 47-57, 1984.
-func (tree *Rtree) SearchIntersect(bb *Rect) []Spatial {
-	return tree.searchIntersect(-1, tree.root, bb)
+func (tree *Rtree) SearchIntersect(bb *Rect, filters ...Filter) []Spatial {
+	return tree.searchIntersect([]Spatial{}, tree.root, bb, filters)
 }
 
 // SearchIntersectWithLimit is similar to SearchIntersect, but returns
 // immediately when the first k results are found. A negative k behaves exactly
 // like SearchIntersect and returns all the results.
+//
+// Kept for backwards compatibility, please use SearchIntersect with a
+// LimitFilter.
 func (tree *Rtree) SearchIntersectWithLimit(k int, bb *Rect) []Spatial {
-	return tree.searchIntersect(k, tree.root, bb)
+	// backwards compatibility, previous implementation didn't limit results if
+	// k was negative.
+	if k < 0 {
+		return tree.SearchIntersect(bb)
+	}
+	return tree.SearchIntersect(bb, LimitFilter(k))
 }
 
-func (tree *Rtree) searchIntersect(k int, n *node, bb *Rect) []Spatial {
-	results := []Spatial{}
+func (tree *Rtree) searchIntersect(results []Spatial, n *node, bb *Rect, filters []Filter) []Spatial {
 	for _, e := range n.entries {
-		if k >= 0 && len(results) >= k {
-			break
+		if intersect(e.bb, bb) == nil {
+			continue
 		}
 
-		if intersect(e.bb, bb) != nil {
-			if n.leaf {
-				results = append(results, e.obj)
-			} else {
-				margin := k - len(results)
-				results = append(results, tree.searchIntersect(margin, e.child, bb)...)
-			}
+		if !n.leaf {
+			results = tree.searchIntersect(results, e.child, bb, filters)
+			continue
+		}
+
+		refuse, abort := applyFilters(results, e.obj, filters)
+		if !refuse {
+			results = append(results, e.obj)
+		}
+
+		if abort {
+			break
 		}
 	}
 	return results
@@ -462,7 +491,6 @@ func (tree *Rtree) NearestNeighbor(p Point) Spatial {
 type entrySlice struct {
 	entries []entry
 	dists   []float64
-	pt      Point
 }
 
 func (s entrySlice) Len() int { return len(s.entries) }
@@ -483,7 +511,7 @@ func sortEntries(p Point, entries []entry) ([]entry, []float64) {
 		sorted[i] = entries[i]
 		dists[i] = p.minDist(entries[i].bb)
 	}
-	sort.Sort(entrySlice{sorted, dists, p})
+	sort.Sort(entrySlice{sorted, dists})
 	return sorted, dists
 }
 
@@ -503,6 +531,16 @@ func pruneEntries(p Point, entries []entry, minDists []float64) []entry {
 		}
 	}
 	return pruned
+}
+
+func pruneEntriesMinDist(d float64, entries []entry, minDists []float64) []entry {
+	var i int
+	for ; i < len(entries); i++ {
+		if minDists[i] > d {
+			break
+		}
+	}
+	return entries[:i]
 }
 
 func (tree *Rtree) nearestNeighbor(p Point, n *node, d float64, nearest Spatial) (Spatial, float64) {
@@ -529,51 +567,55 @@ func (tree *Rtree) nearestNeighbor(p Point, n *node, d float64, nearest Spatial)
 	return nearest, d
 }
 
+// NearestNeighbors gets the closest Spatials to the Point.
 func (tree *Rtree) NearestNeighbors(k int, p Point) []Spatial {
-	dists := make([]float64, k)
-	objs := make([]Spatial, k)
-	for i := 0; i < k; i++ {
-		dists[i] = math.MaxFloat64
-		objs[i] = nil
-	}
+	dists := make([]float64, 0, k)
+	objs := make([]Spatial, 0, k)
 	objs, _ = tree.nearestNeighbors(k, p, tree.root, dists, objs)
 	return objs
 }
 
 // insert obj into nearest and return the first k elements in increasing order.
 func insertNearest(k int, dists []float64, nearest []Spatial, dist float64, obj Spatial) ([]float64, []Spatial) {
-	i := 0
-	for i < k && dist >= dists[i] {
+	i := sort.SearchFloat64s(dists, dist)
+	for i < len(nearest) && dist >= dists[i] {
 		i++
 	}
 	if i >= k {
 		return dists, nearest
 	}
 
-	left, right := dists[:i], dists[i:k-1]
-	updatedDists := make([]float64, k)
-	copy(updatedDists, left)
-	updatedDists[i] = dist
-	copy(updatedDists[i+1:], right)
+	// no resize since cap = k
+	if len(nearest) < k {
+		dists = append(dists, 0)
+		nearest = append(nearest, nil)
+	}
 
-	leftObjs, rightObjs := nearest[:i], nearest[i:k-1]
-	updatedNearest := make([]Spatial, k)
-	copy(updatedNearest, leftObjs)
-	updatedNearest[i] = obj
-	copy(updatedNearest[i+1:], rightObjs)
+	left, right := dists[:i], dists[i:len(dists)-1]
+	copy(dists, left)
+	copy(dists[i+1:], right)
+	dists[i] = dist
 
-	return updatedDists, updatedNearest
+	leftObjs, rightObjs := nearest[:i], nearest[i:len(nearest)-1]
+	copy(nearest, leftObjs)
+	copy(nearest[i+1:], rightObjs)
+	nearest[i] = obj
+
+	return dists, nearest
 }
 
 func (tree *Rtree) nearestNeighbors(k int, p Point, n *node, dists []float64, nearest []Spatial) ([]Spatial, []float64) {
 	if n.leaf {
 		for _, e := range n.entries {
-			dist := math.Sqrt(p.minDist(e.bb))
+			dist := p.minDist(e.bb)
 			dists, nearest = insertNearest(k, dists, nearest, dist, e.obj)
 		}
 	} else {
 		branches, branchDists := sortEntries(p, n.entries)
-		branches = pruneEntries(p, branches, branchDists)
+		// only prune if buffer has k elements
+		if l := len(dists); l >= k {
+			branches = pruneEntriesMinDist(dists[l-1], branches, branchDists)
+		}
 		for _, e := range branches {
 			nearest, dists = tree.nearestNeighbors(k, p, e.child, dists, nearest)
 		}

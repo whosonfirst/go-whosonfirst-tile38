@@ -13,11 +13,14 @@ self:   prep
 	cp -r index src/github.com/whosonfirst/go-whosonfirst-tile38/whosonfirst
 	cp tile38.go src/github.com/whosonfirst/go-whosonfirst-tile38/
 	cp -r vendor/src/* src/
+	cp -r src/github.com/whosonfirst/go-whosonfirst-bbox/vendor/src/github.com/thisisaaronland src/github.com/
 
 rmdeps:
 	if test -d src; then rm -rf src; fi 
 
-deps:   
+deps:
+	@GOPATH=$(GOPATH) go get -u "github.com/facebookgo/grace/gracehttp"
+	@GOPATH=$(GOPATH) go get -u "github.com/whosonfirst/go-whosonfirst-bbox"
 	@GOPATH=$(GOPATH) go get -u "github.com/whosonfirst/go-whosonfirst-crawl"
 	@GOPATH=$(GOPATH) go get -u "github.com/whosonfirst/go-whosonfirst-geojson"
 	@GOPATH=$(GOPATH) go get -u "github.com/whosonfirst/go-whosonfirst-placetypes"
@@ -38,3 +41,4 @@ fmt:
 
 bin:	self
 	@GOPATH=$(GOPATH) go build -o bin/wof-tile38-index cmd/wof-tile38-index.go
+	@GOPATH=$(GOPATH) go build -o bin/wof-tile38-bboxd cmd/wof-tile38-bboxd.go

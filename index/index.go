@@ -44,19 +44,12 @@ type GeometryPoly struct {
 type Tile38Client struct {
 	Endpoint   string
 	Geometry   string
-	Placetypes *placetypes.WOFPlacetypes
 	Debug      bool
 	Verbose    bool
 	pool       *redis.Pool
 }
 
 func NewTile38Client(host string, port int) (*Tile38Client, error) {
-
-	pt, err := placetypes.Init()
-
-	if err != nil {
-		return nil, err
-	}
 
 	endpoint := fmt.Sprintf("%s:%d", host, port)
 
@@ -66,6 +59,8 @@ func NewTile38Client(host string, port int) (*Tile38Client, error) {
 	tries := 0
 	max_tries := 5
 
+	var err error
+	
 	for tries < max_tries {
 
 		tries += 1
@@ -106,7 +101,6 @@ func NewTile38Client(host string, port int) (*Tile38Client, error) {
 
 	client := Tile38Client{
 		Endpoint:   endpoint,
-		Placetypes: pt,
 		Geometry:   "", // use the default geojson geometry
 		Debug:      false,
 		pool:       pool,
@@ -134,6 +128,8 @@ func (client *Tile38Client) IndexFeature(feature *geojson.WOFFeature, collection
 	wofid := feature.Id()
 	str_wofid := strconv.Itoa(wofid)
 
+	placetype := feature.Placetype()
+	
 	body := feature.Body()
 
 	var str_geom string
@@ -241,9 +237,7 @@ func (client *Tile38Client) IndexFeature(feature *geojson.WOFFeature, collection
 
 	// log.Println("number of active connections", client.pool.ActiveCount())
 
-	placetype := feature.Placetype()
-
-	pt, err := client.Placetypes.GetPlacetypeByName(placetype)
+	pt, err := placetypes.GetPlacetypeByName(placetype)
 
 	if err != nil {
 		return err

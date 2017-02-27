@@ -2,7 +2,10 @@ package rtreego
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
+	"reflect"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -36,7 +39,7 @@ func printEntry(e entry, level int) {
 	if e.child != nil {
 		printNode(e.child, level)
 	} else {
-		fmt.Printf("%sObject: %p\n", padding, e.obj)
+		fmt.Printf("%sObject: %v\n", padding, e.obj)
 	}
 	fmt.Println()
 }
@@ -492,7 +495,7 @@ func TestFindLeaf(t *testing.T) {
 	}
 	verify(t, rt.root)
 	for _, thing := range things {
-		leaf := rt.findLeaf(rt.root, thing)
+		leaf := rt.findLeaf(rt.root, thing, defaultComparator)
 		if leaf == nil {
 			printNode(rt.root, 0)
 			t.Errorf("Unable to find leaf containing an entry after insertion!")
@@ -531,7 +534,7 @@ func TestFindLeafDoesNotExist(t *testing.T) {
 	}
 
 	obj := mustRect(Point{99, 99}, []float64{99, 99})
-	leaf := rt.findLeaf(rt.root, obj)
+	leaf := rt.findLeaf(rt.root, obj, defaultComparator)
 	if leaf != nil {
 		t.Errorf("findLeaf failed to return nil for non-existent object")
 	}
@@ -683,6 +686,89 @@ func TestDelete(t *testing.T) {
 	}
 }
 
+func TestDeleteWithDepthChange(t *testing.T) {
+	rt := NewTree(2, 3, 3)
+	things := []*Rect{
+		mustRect(Point{0, 0}, []float64{2, 1}),
+		mustRect(Point{3, 1}, []float64{1, 2}),
+		mustRect(Point{1, 2}, []float64{2, 2}),
+		mustRect(Point{8, 6}, []float64{1, 1}),
+	}
+	for _, thing := range things {
+		rt.Insert(thing)
+	}
+
+	// delete last item and condense nodes
+	rt.Delete(things[3])
+
+	// rt.height should be 1 otherwise insert increases height to 3
+	rt.Insert(things[3])
+
+	// and verify would fail
+	verify(t, rt.root)
+}
+
+func TestDeleteWithComparator(t *testing.T) {
+	rt := NewTree(2, 3, 3)
+
+	type IDRect struct {
+		ID string
+		*Rect
+	}
+
+	things := []*IDRect{
+		{"1", mustRect(Point{0, 0}, []float64{2, 1})},
+		{"2", mustRect(Point{3, 1}, []float64{1, 2})},
+		{"3", mustRect(Point{1, 2}, []float64{2, 2})},
+		{"4", mustRect(Point{8, 6}, []float64{1, 1})},
+		{"5", mustRect(Point{10, 3}, []float64{1, 2})},
+		{"6", mustRect(Point{11, 7}, []float64{1, 1})},
+		{"7", mustRect(Point{0, 6}, []float64{1, 2})},
+		{"8", mustRect(Point{1, 6}, []float64{1, 2})},
+		{"9", mustRect(Point{0, 8}, []float64{1, 2})},
+		{"10", mustRect(Point{1, 8}, []float64{1, 2})},
+	}
+	for _, thing := range things {
+		rt.Insert(thing)
+	}
+
+	verify(t, rt.root)
+
+	cmp := func(obj1, obj2 Spatial) bool {
+		idr1 := obj1.(*IDRect)
+		idr2 := obj2.(*IDRect)
+		return idr1.ID == idr2.ID
+	}
+
+	things2 := []*IDRect{}
+	for len(things) > 0 {
+		i := rand.Int() % len(things)
+		// make a deep copy
+		copy := &IDRect{things[i].ID, &(*things[i].Rect)}
+		things2 = append(things2, copy)
+
+		if !cmp(things[i], copy) {
+			log.Fatalf("expected copy to be equal to the original, original: %v, copy: %v", things[i], copy)
+		}
+
+		things = append(things[:i], things[i+1:]...)
+	}
+
+	for i, thing := range things2 {
+		ok := rt.DeleteWithComparator(thing, cmp)
+		if !ok {
+			t.Errorf("Thing %v was not found in tree during deletion", thing)
+			return
+		}
+
+		if rt.Size() != len(things2)-i-1 {
+			t.Errorf("Delete failed to remove %v", thing)
+			return
+		}
+		verify(t, rt.root)
+	}
+}
+
 func TestSearchIntersect(t *testing.T) {
 	rt := NewTree(2, 3, 3)
 	things := []*Rect{
@@ -761,6 +847,63 @@ func TestSearchIntersectWithLimit(t *testing.T) {
 	}
 }
 
+func TestSearchIntersectWithTestFilter(t *testing.T) {
+	rt := NewTree(2, 3, 3)
+	things := []*Rect{
+		mustRect(Point{0, 0}, []float64{2, 1}),
+		mustRect(Point{3, 1}, []float64{1, 2}),
+		mustRect(Point{1, 2}, []float64{2, 2}),
+		mustRect(Point{8, 6}, []float64{1, 1}),
+		mustRect(Point{10, 3}, []float64{1, 2}),
+		mustRect(Point{11, 7}, []float64{1, 1}),
+		mustRect(Point{2, 6}, []float64{1, 2}),
+		mustRect(Point{3, 6}, []float64{1, 2}),
+		mustRect(Point{2, 8}, []float64{1, 2}),
+		mustRect(Point{3, 8}, []float64{1, 2}),
+	}
+	for _, thing := range things {
+		rt.Insert(thing)
+	}
+
+	bb := mustRect(Point{2, 1.5}, []float64{10, 5.5})
+
+	// intersecting indexes are 1, 2, 6, 7, 3, 4
+	// rects which we do not filter out
+	expected := []int{1, 6, 4}
+
+	// this test filter will only pick the objects that match the specified indexes
+	// in things
+	objects := rt.SearchIntersect(bb, func(results []Spatial, object Spatial) (bool, bool) {
+		rect := object.(*Rect)
+
+		for _, a := range expected {
+			if rect == things[a] {
+				return false, false
+			}
+		}
+
+		return true, false
+	})
+
+	if len(expected) != len(objects) {
+		t.Fatalf("expected %d results but received %d:", len(expected), len(objects))
+	}
+
+	actual := make([]int, 3)
+	for _, obj := range objects {
+		rect := obj.(*Rect)
+		for i := range things {
+			if rect == things[i] {
+				actual = append(actual, i)
+			}
+		}
+	}
+
+	if reflect.DeepEqual(actual, expected) {
+		t.Errorf("expected results: %v, actual results: %v", expected, actual)
+	}
+}
+
 func TestSearchIntersectNoResults(t *testing.T) {
 	rt := NewTree(2, 3, 3)
 	things := []*Rect{
@@ -790,8 +933,7 @@ func TestSortEntries(t *testing.T) {
 	objs := []*Rect{
 		mustRect(Point{1, 1}, []float64{1, 1}),
 		mustRect(Point{2, 2}, []float64{1, 1}),
-		mustRect(Point{3, 3}, []float64{1, 1}),
-	}
+		mustRect(Point{3, 3}, []float64{1, 1})}
 	entries := []entry{
 		entry{objs[2], nil, objs[2]},
 		entry{objs[1], nil, objs[1]},
@@ -830,6 +972,26 @@ func TestNearestNeighbor(t *testing.T) {
 	}
 }
 
+type sortableRects struct {
+	r []*Rect
+	p Point
+}
+
+func (r sortableRects) Less(i, j int) bool {
+	if r.p.minDist(r.r[i]) < r.p.minDist(r.r[j]) {
+		return true
+	}
+	return false
+}
+
+func (r sortableRects) Len() int {
+	return len(r.r)
+}
+
+func (r sortableRects) Swap(i, j int) {
+	r.r[i], r.r[j] = r.r[j], r.r[i]
+}
+
 func TestNearestNeighbors(t *testing.T) {
 	rt := NewTree(2, 3, 3)
 	things := []*Rect{
@@ -844,8 +1006,18 @@ func TestNearestNeighbors(t *testing.T) {
 		rt.Insert(thing)
 	}
 
-	objs := rt.NearestNeighbors(3, Point{0.5, 0.5})
-	if objs[0] != things[0] || objs[1] != things[2] || objs[2] != things[5] {
-		t.Errorf("NearestNeighbors failed")
+	p := Point{0.5, 0.5}
+	sort.Sort(sortableRects{things, p})
+
+	objs := rt.NearestNeighbors(len(things), p)
+	for i := range things {
+		if objs[i] != things[i] {
+			t.Errorf("NearestNeighbors failed at index %d: %v != %v", i, objs[i], things[i])
+		}
+	}
+
+	objs = rt.NearestNeighbors(len(things)+2, p)
+	if len(objs) > len(things) {
+		t.Errorf("NearestNeighbors failed: too many elements")
 	}
 }
