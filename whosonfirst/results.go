@@ -4,7 +4,7 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-tile38"
 )
 
-func Tile38ResponseToWOFResults(rsp tile38.Tile38Response) (tile38.WOFResults, error) {
+func Tile38ResponseToWOFResponse(rsp tile38.Tile38Response) (tile38.WOFResponse, error) {
 
 	wof_results := make([]tile38.WOFResult, 0)
 
