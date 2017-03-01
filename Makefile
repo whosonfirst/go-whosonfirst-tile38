@@ -10,7 +10,7 @@ self:   prep
 	if test -d src/github.com/whosonfirst/go-whosonfirst-tile38; then rm -rf src/github.com/whosonfirst/go-whosonfirst-tile38; fi
 	mkdir -p src/github.com/whosonfirst/go-whosonfirst-tile38
 	cp -r index src/github.com/whosonfirst/go-whosonfirst-tile38/index
-	cp -r index src/github.com/whosonfirst/go-whosonfirst-tile38/whosonfirst
+	cp -r whosonfirst src/github.com/whosonfirst/go-whosonfirst-tile38/whosonfirst
 	cp tile38.go src/github.com/whosonfirst/go-whosonfirst-tile38/
 	cp -r vendor/src/* src/
 	cp -r src/github.com/whosonfirst/go-whosonfirst-bbox/vendor/src/github.com/thisisaaronland src/github.com/
