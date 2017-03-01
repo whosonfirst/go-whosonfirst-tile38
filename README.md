@@ -18,6 +18,10 @@ All of this package's dependencies are bundled with the code in the `vendor` dir
 
 ## Utilities
 
+### wof-tile38-bboxd
+
+_Please write me_
+
 ### wof-tile38-index
 
 ```
