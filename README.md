@@ -22,6 +22,28 @@ All of this package's dependencies are bundled with the code in the `vendor` dir
 
 _Please write me_
 
+```
+./bin/wof-tile38-bboxd -h
+Usage of ./bin/wof-tile38-bboxd:
+  -host string
+    	The address your HTTP server should listen for requests on (default "localhost")
+  -port int
+    	The port number your HTTP server should listen for requests on (default 8080)
+  -tile38-collection string
+    	The name of the Tile38 collection to read data from.
+  -tile38-host string
+    	The address your Tile38 server is bound to. (default "localhost")
+  -tile38-port int
+    	The port number your Tile38 server is bound to. (default 9851)
+```
+
+#### Example
+
+```
+$> curl 'localhost:8080?bbox=-33.893217,151.165524,-33.840479,151.281223&per_page=1&cursor=1'
+{"results":[{"wof:id":1108823025,"wof:parent_id":-1,"wof:placetype_id":102312319,"wof:is_superseded":0,"wof:is_deprecated":0}],"cursor":2}
+```
+
 ### wof-tile38-index
 
 ```
