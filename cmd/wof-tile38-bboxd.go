@@ -30,6 +30,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -53,7 +54,11 @@ func main() {
 		scheme := query.Get("scheme")
 		order := query.Get("order")
 
-		// cursor := query.Get("cursor")
+		cursor := query.Get("cursor")
+		per_page := query.Get("per_page")
+
+		log.Println("cursor:", cursor)
+		log.Println("per_page:", per_page)
 
 		if bbox == "" {
 			http.Error(rsp, "Missing bbox parameter", http.StatusBadRequest)
@@ -87,9 +92,25 @@ func main() {
 		nelat := bb.MaxY()
 		nelon := bb.MaxX()
 
-		// TO DO: CURSORS
+		cmd := []string{
+			"INTERSECTS",
+			*t38_collection,
+		}
 
-		t38_cmd := fmt.Sprintf("INTERSECTS %s POINTS BOUNDS %0.6f %0.6f %0.6f %0.6f", *t38_collection, swlat, swlon, nelat, nelon)
+		if cursor != "" {
+			cmd = append(cmd, "CURSOR")
+			cmd = append(cmd, cursor)
+		}
+
+		if per_page != "" {
+
+			cmd = append(cmd, "LIMIT")
+			cmd = append(cmd, per_page)
+		}
+
+		cmd = append(cmd, fmt.Sprintf("POINTS BOUNDS %0.6f %0.6f %0.6f %0.6f", swlat, swlon, nelat, nelon))
+
+		t38_cmd := strings.Join(cmd, " ")
 		t38_url := fmt.Sprintf("http://%s/%s", t38_addr, url.QueryEscape(t38_cmd))
 
 		log.Println(t38_url)
