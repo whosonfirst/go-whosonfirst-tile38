@@ -34,12 +34,12 @@ import (
 
 func main() {
 
-	var host = flag.String("host", "localhost", "The hostname to listen for requests on")
-	var port = flag.Int("port", 8080, "The port number to listen for requests on")
+	var host = flag.String("host", "localhost", "The address your HTTP server should listen for requests on")
+	var port = flag.Int("port", 8080, "The port number your HTTP server should listen for requests on")
 
-	var t38_host = flag.String("tile38-host", "127.0.0.1", "")
-	var t38_port = flag.Int("tile38-port", 9851, "")
-	var t38_collection = flag.String("tile38-collection", "dxlabs", "")
+	var t38_host = flag.String("tile38-host", "localhost", "The address your Tile38 server is bound to.")
+	var t38_port = flag.Int("tile38-port", 9851, "The port number your Tile38 server is bound to.")
+	var t38_collection = flag.String("tile38-collection", "", "The name of the Tile38 collection to read data from.")
 
 	flag.Parse()
 

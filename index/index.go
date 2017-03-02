@@ -42,11 +42,11 @@ type GeometryPoly struct {
 }
 
 type Tile38Client struct {
-	Endpoint   string
-	Geometry   string
-	Debug      bool
-	Verbose    bool
-	pool       *redis.Pool
+	Endpoint string
+	Geometry string
+	Debug    bool
+	Verbose  bool
+	pool     *redis.Pool
 }
 
 func NewTile38Client(host string, port int) (*Tile38Client, error) {
@@ -60,7 +60,7 @@ func NewTile38Client(host string, port int) (*Tile38Client, error) {
 	max_tries := 5
 
 	var err error
-	
+
 	for tries < max_tries {
 
 		tries += 1
@@ -100,10 +100,10 @@ func NewTile38Client(host string, port int) (*Tile38Client, error) {
 	}
 
 	client := Tile38Client{
-		Endpoint:   endpoint,
-		Geometry:   "", // use the default geojson geometry
-		Debug:      false,
-		pool:       pool,
+		Endpoint: endpoint,
+		Geometry: "", // use the default geojson geometry
+		Debug:    false,
+		pool:     pool,
 	}
 
 	return &client, nil
@@ -129,7 +129,7 @@ func (client *Tile38Client) IndexFeature(feature *geojson.WOFFeature, collection
 	str_wofid := strconv.Itoa(wofid)
 
 	placetype := feature.Placetype()
-	
+
 	body := feature.Body()
 
 	var str_geom string
