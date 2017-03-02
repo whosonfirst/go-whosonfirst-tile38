@@ -24,6 +24,7 @@ import (
 	"github.com/facebookgo/grace/gracehttp"
 	"github.com/whosonfirst/go-whosonfirst-bbox/parser"
 	"github.com/whosonfirst/go-whosonfirst-tile38"
+	"github.com/whosonfirst/go-whosonfirst-tile38/client"
 	"github.com/whosonfirst/go-whosonfirst-tile38/whosonfirst"
 	"io/ioutil"
 	"log"
@@ -45,6 +46,12 @@ func main() {
 	flag.Parse()
 
 	t38_addr := fmt.Sprintf("%s:%d", *t38_host, *t38_port)
+
+	t38_client, err := client.NewRESPClient(*t38_host, *t38_port)
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	handler := func(rsp http.ResponseWriter, req *http.Request) {
 
@@ -111,6 +118,12 @@ func main() {
 		cmd = append(cmd, fmt.Sprintf("POINTS BOUNDS %0.6f %0.6f %0.6f %0.6f", swlat, swlon, nelat, nelon))
 
 		t38_cmd := strings.Join(cmd, " ")
+
+		r, e := t38_client.Do(t38_cmd)
+
+		log.Println(r)
+		log.Println(e)
+
 		t38_url := fmt.Sprintf("http://%s/%s", t38_addr, url.QueryEscape(t38_cmd))
 
 		log.Println(t38_url)
@@ -164,7 +177,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handler)
 
-	err := gracehttp.Serve(&http.Server{Addr: endpoint, Handler: mux})
+	err = gracehttp.Serve(&http.Server{Addr: endpoint, Handler: mux})
 
 	if err != nil {
 		log.Fatal(err)
