@@ -1,5 +1,9 @@
 package tile38
 
+type Tile38Client interface {
+     Do(string) (Tile38Response, error)
+}
+
 type Tile38Coord struct {
      Latitude float64 `json:"lat"`
      Longitude float64 `json:"lon"`     
