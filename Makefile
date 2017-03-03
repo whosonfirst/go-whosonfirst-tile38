@@ -37,6 +37,7 @@ vendor-deps: rmdeps deps
 
 fmt:
 	go fmt cmd/*.go
+	go fmt client/*.go
 	go fmt index/*.go
 	go fmt whosonfirst/*.go
 

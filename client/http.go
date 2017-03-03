@@ -1,16 +1,17 @@
 package client
 
 import (
-       "encoding/json"
-       "fmt"
-       "github.com/whosonfirst/go-whosonfirst-tile38"
-       "io/ioutil"
-       "net/http"
-       "net/url"
+	"encoding/json"
+	"fmt"
+	"github.com/whosonfirst/go-whosonfirst-tile38"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"strings"
 )
 
 type HTTPClient struct {
-        tile38.Tile38Client
+	tile38.Tile38Client
 	Endpoint string
 	Debug    bool
 	Verbose  bool
@@ -18,7 +19,7 @@ type HTTPClient struct {
 
 func NewHTTPClient(host string, port int) (*HTTPClient, error) {
 
-     endpoint := fmt.Sprintf("%s:%d", host, port)
+	endpoint := fmt.Sprintf("%s:%d", host, port)
 
 	client := HTTPClient{
 		Endpoint: endpoint,
@@ -28,30 +29,40 @@ func NewHTTPClient(host string, port int) (*HTTPClient, error) {
 	return &client, nil
 }
 
-func (cl *HTTPClient) Do(t38_cmd string) (interface{}, error) {
+func (cl *HTTPClient) Do(t38_cmd string, t38_args ...interface{}) (interface{}, error) {
 
-		t38_url := fmt.Sprintf("http://%s/%s", cl.Endpoint, url.QueryEscape(t38_cmd))
+	http_cmd := []string{
+		t38_cmd,
+	}
 
-		http_rsp, err := http.Get(t38_url)
+	for _, a := range t38_args {
+		http_cmd = append(http_cmd, a.(string))
+	}
 
-		if err != nil {
-		   return nil, err
-		}
+	str_cmd := strings.Join(http_cmd, " ")
 
-		defer http_rsp.Body.Close()
+	t38_url := fmt.Sprintf("http://%s/%s", cl.Endpoint, url.QueryEscape(str_cmd))
 
-		results, err := ioutil.ReadAll(http_rsp.Body)
+	http_rsp, err := http.Get(t38_url)
 
-		if err != nil {
-		   return nil, err
-		}
+	if err != nil {
+		return nil, err
+	}
 
-		var t38_rsp tile38.Tile38Response
-		err = json.Unmarshal(results, &t38_rsp)
+	defer http_rsp.Body.Close()
 
-		if err != nil {
-		       return nil, err
-		}
+	results, err := ioutil.ReadAll(http_rsp.Body)
 
-		return t38_rsp, nil
+	if err != nil {
+		return nil, err
+	}
+
+	var t38_rsp tile38.Tile38Response
+	err = json.Unmarshal(results, &t38_rsp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return t38_rsp, nil
 }

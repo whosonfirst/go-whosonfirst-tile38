@@ -1,7 +1,7 @@
 package tile38
 
 type Tile38Client interface {
-     Do(string) (interface{}, error)
+     Do(string, ...interface{}) (interface{}, error)
 }
 
 type Tile38Coord struct {

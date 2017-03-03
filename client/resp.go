@@ -1,14 +1,15 @@
 package client
 
 import (
-       "fmt"
-       "github.com/whosonfirst/go-whosonfirst-tile38"
+	"fmt"
 	"github.com/garyburd/redigo/redis"
-	"time"		
+	"github.com/whosonfirst/go-whosonfirst-tile38"
+	"log"
+	"time"
 )
 
 type RESPClient struct {
-        tile38.Tile38Client
+	tile38.Tile38Client
 	Endpoint string
 	Debug    bool
 	Verbose  bool
@@ -74,16 +75,17 @@ func NewRESPClient(host string, port int) (*RESPClient, error) {
 	return &client, nil
 }
 
-func (cl *RESPClient) Do(cmd string) (interface{}, error) {
+func (cl *RESPClient) Do(t38_cmd string, t38_args ...interface{}) (interface{}, error) {
 
 	conn := cl.pool.Get()
 	defer conn.Close()
 
-	rsp, err := conn.Do(cmd)
+	rsp, err := conn.Do(t38_cmd, t38_args...)
 
 	if err != nil {
 		return nil, err
 	}
 
+	log.Println(rsp)
 	return rsp, nil
 }

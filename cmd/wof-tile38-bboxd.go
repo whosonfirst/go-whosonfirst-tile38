@@ -26,12 +26,9 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-tile38"
 	"github.com/whosonfirst/go-whosonfirst-tile38/client"
 	"github.com/whosonfirst/go-whosonfirst-tile38/whosonfirst"
-	"io/ioutil"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
-	"strings"
 )
 
 func main() {
@@ -45,9 +42,8 @@ func main() {
 
 	flag.Parse()
 
-	t38_addr := fmt.Sprintf("%s:%d", *t38_host, *t38_port)
-
-	t38_client, err := client.NewRESPClient(*t38_host, *t38_port)
+	// t38_client, err := client.NewRESPClient(*t38_host, *t38_port)
+	t38_client, err := client.NewHTTPClient(*t38_host, *t38_port)
 
 	if err != nil {
 		log.Fatal(err)
@@ -63,9 +59,6 @@ func main() {
 
 		cursor := query.Get("cursor")
 		per_page := query.Get("per_page")
-
-		log.Println("cursor:", cursor)
-		log.Println("per_page:", per_page)
 
 		if bbox == "" {
 			http.Error(rsp, "Missing bbox parameter", http.StatusBadRequest)
@@ -99,60 +92,35 @@ func main() {
 		nelat := bb.MaxY()
 		nelon := bb.MaxX()
 
-		cmd := []string{
-			"INTERSECTS",
+		t38_cmd := "INTERSECTS"
+
+		// See this... Yeah, Go is weird that way...
+
+		t38_args := []interface{}{
 			*t38_collection,
 		}
 
 		if cursor != "" {
-			cmd = append(cmd, "CURSOR")
-			cmd = append(cmd, cursor)
+			t38_args = append(t38_args, "CURSOR")
+			t38_args = append(t38_args, cursor)
 		}
 
 		if per_page != "" {
 
-			cmd = append(cmd, "LIMIT")
-			cmd = append(cmd, per_page)
+			t38_args = append(t38_args, "LIMIT")
+			t38_args = append(t38_args, per_page)
 		}
 
-		cmd = append(cmd, fmt.Sprintf("POINTS BOUNDS %0.6f %0.6f %0.6f %0.6f", swlat, swlon, nelat, nelon))
+		t38_args = append(t38_args, fmt.Sprintf("POINTS BOUNDS %0.6f %0.6f %0.6f %0.6f", swlat, swlon, nelat, nelon))
 
-		t38_cmd := strings.Join(cmd, " ")
-
-		r, e := t38_client.Do(t38_cmd)
-
-		log.Println(r)
-		log.Println(e)
-
-		t38_url := fmt.Sprintf("http://%s/%s", t38_addr, url.QueryEscape(t38_cmd))
-
-		log.Println(t38_url)
-
-		http_rsp, err := http.Get(t38_url)
+		t38_rsp, err := t38_client.Do(t38_cmd, t38_args...)
 
 		if err != nil {
 			http.Error(rsp, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		defer http_rsp.Body.Close()
-
-		results, err := ioutil.ReadAll(http_rsp.Body)
-
-		if err != nil {
-			http.Error(rsp, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		var t38_rsp tile38.Tile38Response
-		err = json.Unmarshal(results, &t38_rsp)
-
-		if err != nil {
-			http.Error(rsp, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		wof_rsp, err := whosonfirst.Tile38ResponseToWOFResponse(t38_rsp)
+		wof_rsp, err := whosonfirst.Tile38ResponseToWOFResponse(t38_rsp.(tile38.Tile38Response))
 
 		if err != nil {
 			http.Error(rsp, err.Error(), http.StatusInternalServerError)
