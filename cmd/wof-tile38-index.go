@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
+	"github.com/whosonfirst/go-whosonfirst-tile38/client"
 	"github.com/whosonfirst/go-whosonfirst-tile38/index"
-	// "github.com/whosonfirst/go-whosonfirst-tile38/simple"
 	"log"
 	"os"
 	"runtime"
@@ -33,15 +33,17 @@ func main() {
 
 	runtime.GOMAXPROCS(*procs)
 
-	client, err := tile38.NewTile38Client(*t38_host, *t38_port)
+	t38_client, err := client.NewRESPClient(*t38_host, *t38_port)
 
 	if err != nil {
 		log.Fatalf("failed to create Tile38Client (%s:%d) because %v", *t38_host, *t38_port, err)
 	}
 
-	client.Verbose = *verbose
-	client.Debug = *debug
-	client.Geometry = *geom
+	indexer, err := index.NewTile38Indexer(t38_client)
+
+	indexer.Verbose = *verbose
+	indexer.Debug = *debug
+	indexer.Geometry = *geom
 
 	args := flag.Args()
 
@@ -49,11 +51,11 @@ func main() {
 
 		if *mode == "directory" {
 
-			err = client.IndexDirectory(path, *t38_collection, *nfs_kludge)
+			err = indexer.IndexDirectory(path, *t38_collection, *nfs_kludge)
 
 		} else if *mode == "filelist" {
 
-			err = client.IndexFileList(path, *t38_collection)
+			err = indexer.IndexFileList(path, *t38_collection)
 
 		} else if *mode == "meta" {
 
@@ -75,10 +77,10 @@ func main() {
 			meta_file := parts[0]
 			data_root := parts[1]
 
-			err = client.IndexMetaFile(meta_file, *t38_collection, data_root)
+			err = indexer.IndexMetaFile(meta_file, *t38_collection, data_root)
 
 		} else {
-			err = client.IndexFile(path, *t38_collection)
+			err = indexer.IndexFile(path, *t38_collection)
 		}
 
 		if err != nil {
