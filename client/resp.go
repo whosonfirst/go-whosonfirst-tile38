@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"github.com/whosonfirst/go-whosonfirst-tile38"
-	"log"
+	_ "log"
 	"time"
 )
 
@@ -86,6 +86,5 @@ func (cl *RESPClient) Do(t38_cmd string, t38_args ...interface{}) (interface{}, 
 		return nil, err
 	}
 
-	log.Println(rsp)
 	return rsp, nil
 }

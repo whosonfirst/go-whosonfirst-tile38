@@ -29,6 +29,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	_ "strings"
 )
 
 func main() {
@@ -42,8 +43,8 @@ func main() {
 
 	flag.Parse()
 
-	// t38_client, err := client.NewRESPClient(*t38_host, *t38_port)
-	t38_client, err := client.NewHTTPClient(*t38_host, *t38_port)
+	t38_client, err := client.NewRESPClient(*t38_host, *t38_port)
+	// t38_client, err := client.NewHTTPClient(*t38_host, *t38_port)
 
 	if err != nil {
 		log.Fatal(err)
@@ -111,7 +112,12 @@ func main() {
 			t38_args = append(t38_args, per_page)
 		}
 
-		t38_args = append(t38_args, fmt.Sprintf("POINTS BOUNDS %0.6f %0.6f %0.6f %0.6f", swlat, swlon, nelat, nelon))
+		t38_args = append(t38_args, "POINTS")
+		t38_args = append(t38_args, "BOUNDS")
+		t38_args = append(t38_args, fmt.Sprintf("%0.6f", swlat))
+		t38_args = append(t38_args, fmt.Sprintf("%0.6f", swlon))
+		t38_args = append(t38_args, fmt.Sprintf("%0.6f", nelat))
+		t38_args = append(t38_args, fmt.Sprintf("%0.6f", nelon))
 
 		t38_rsp, err := t38_client.Do(t38_cmd, t38_args...)
 
