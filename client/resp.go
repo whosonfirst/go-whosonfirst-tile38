@@ -1,11 +1,11 @@
 package client
 
-// This does not work. I can't figure out how/where/what to unserialize the
-// RESP response...
-
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/garyburd/redigo/redis"
+	"github.com/tidwall/gjson"
 	"github.com/whosonfirst/go-whosonfirst-tile38"
 	_ "log"
 	"time"
@@ -65,6 +65,19 @@ func NewRESPClient(host string, port int) (*RESPClient, error) {
 			if err != nil {
 				return nil, err
 			}
+
+			// because this: https://github.com/tidwall/tile38/issues/153
+
+			json_rsp, err := redis.String(c.Do("OUTPUT", "json"))
+
+			if err != nil {
+				return nil, err
+			}
+
+			if !gjson.Get(json_rsp, "ok").Bool() {
+				return nil, errors.New(gjson.Get(json_rsp, "err").String())
+			}
+
 			return c, err
 		},
 	}
@@ -83,12 +96,24 @@ func (cl *RESPClient) Do(t38_cmd string, t38_args ...interface{}) (interface{}, 
 	conn := cl.pool.Get()
 	defer conn.Close()
 
-	rsp, err := conn.Do(t38_cmd, t38_args...)
+	redis_rsp, err := conn.Do(t38_cmd, t38_args...)
 
 	if err != nil {
 		return nil, err
 	}
 
-	// this will fail...
-	return rsp, nil
+	json_rsp, err := redis.Bytes(redis_rsp, nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var t38_rsp tile38.Tile38Response
+	err = json.Unmarshal(json_rsp, &t38_rsp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return t38_rsp, nil
 }

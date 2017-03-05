@@ -10,7 +10,7 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-geojson"
 	"github.com/whosonfirst/go-whosonfirst-placetypes"
 	"github.com/whosonfirst/go-whosonfirst-tile38"
-	_ "github.com/whosonfirst/go-whosonfirst-tile38/util"	
+	_ "github.com/whosonfirst/go-whosonfirst-tile38/util"
 	"io"
 	"log"
 	"os"
@@ -237,7 +237,7 @@ func (idx *Tile38Indexer) IndexFeature(feature *geojson.WOFFeature, collection s
 
 	// PLEASE make []string thingies and the util.ListToRESPCommand helper
 	// instead of all these strings... (20170304/thisisaaronland)
-	
+
 	if idx.Verbose {
 
 		if idx.Geometry == "" {

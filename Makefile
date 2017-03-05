@@ -28,6 +28,7 @@ deps:
 	@GOPATH=$(GOPATH) go get -u "github.com/whosonfirst/go-whosonfirst-placetypes"
 	@GOPATH=$(GOPATH) go get -u "github.com/whosonfirst/go-whosonfirst-csv"
 	@GOPATH=$(GOPATH) go get -u "github.com/garyburd/redigo/redis"
+	@GOPATH=$(GOPATH) go get -u "github.com/tidwall/gjson"
 
 vendor-deps: rmdeps deps
 	if test ! -d vendor; then mkdir vendor; fi

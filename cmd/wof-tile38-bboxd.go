@@ -41,8 +41,8 @@ func main() {
 
 	flag.Parse()
 
-	// t38_client, err := client.NewRESPClient(*t38_host, *t38_port)
-	t38_client, err := client.NewHTTPClient(*t38_host, *t38_port)
+	t38_client, err := client.NewRESPClient(*t38_host, *t38_port)
+	// t38_client, err := client.NewHTTPClient(*t38_host, *t38_port)
 
 	if err != nil {
 		log.Fatal(err)
