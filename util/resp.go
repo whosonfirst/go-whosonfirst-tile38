@@ -12,8 +12,17 @@ func StringToRESPCommand(str string) (string, []interface{}) {
 
 func ListToRESPCommand(list []string) (string, []interface{}) {
 
-	cmd := list[0]
-	args := ListToRESPArgs(list[1:])
+	chunks := make([]string, 0)
+
+	for _, phrase := range list {
+
+		for _, chars := range strings.Split(phrase, " ") {
+			chunks = append(chunks, chars)
+		}
+	}
+
+	cmd := chunks[0]
+	args := ListToRESPArgs(chunks[1:])
 
 	return cmd, args
 }
@@ -22,8 +31,8 @@ func ListToRESPArgs(list []string) []interface{} {
 
 	args := make([]interface{}, 0)
 
-	for _, a := range list {
-		args = append(args, a)
+	for _, chars := range list {
+		args = append(args, chars)
 	}
 
 	return args

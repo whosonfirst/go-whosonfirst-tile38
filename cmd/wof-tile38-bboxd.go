@@ -7,11 +7,7 @@ package main
 
 	* Data that has been indexed by github:whosonfirst/go-whosonfirst-tile38/cmd/wof-tile38-index.go
 
-	To do:
-	* Use RESP protocol instead of HTTP (https://github.com/tidwall/tile38/wiki/Go-example-(redigo))
-
-	For example:
-	* curl 'localhost:8080?bbox=-33.893217,151.165524,-33.840479,151.281223'
+	* Example: curl 'localhost:8080?bbox=-33.893217,151.165524,-33.840479,151.281223'
 
 */
 
@@ -23,11 +19,11 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-bbox/parser"
 	"github.com/whosonfirst/go-whosonfirst-tile38"
 	"github.com/whosonfirst/go-whosonfirst-tile38/client"
+	"github.com/whosonfirst/go-whosonfirst-tile38/util"
 	"github.com/whosonfirst/go-whosonfirst-tile38/whosonfirst"
 	"log"
 	"net/http"
 	"os"
-	_ "strings"
 )
 
 func main() {
@@ -42,7 +38,6 @@ func main() {
 	flag.Parse()
 
 	t38_client, err := client.NewRESPClient(*t38_host, *t38_port)
-	// t38_client, err := client.NewHTTPClient(*t38_host, *t38_port)
 
 	if err != nil {
 		log.Fatal(err)
@@ -91,32 +86,21 @@ func main() {
 		nelat := bb.MaxY()
 		nelon := bb.MaxX()
 
-		t38_cmd := "INTERSECTS"
-
-		// See this... Yeah, Go is weird that way...
-
-		t38_args := []interface{}{
-			*t38_collection,
+		cmd := []string{
+			fmt.Sprintf("INTERSECTS %s", *t38_collection),
 		}
 
 		if cursor != "" {
-			t38_args = append(t38_args, "CURSOR")
-			t38_args = append(t38_args, cursor)
+			cmd = append(cmd, fmt.Sprintf("CURSOR %s", cursor))
 		}
 
 		if per_page != "" {
-
-			t38_args = append(t38_args, "LIMIT")
-			t38_args = append(t38_args, per_page)
+			cmd = append(cmd, fmt.Sprintf("LIMIT %s", per_page))
 		}
 
-		t38_args = append(t38_args, "POINTS")
-		t38_args = append(t38_args, "BOUNDS")
-		t38_args = append(t38_args, fmt.Sprintf("%0.6f", swlat))
-		t38_args = append(t38_args, fmt.Sprintf("%0.6f", swlon))
-		t38_args = append(t38_args, fmt.Sprintf("%0.6f", nelat))
-		t38_args = append(t38_args, fmt.Sprintf("%0.6f", nelon))
+		cmd = append(cmd, fmt.Sprintf("POINTS BOUNDS %0.6f %0.6f %0.6f %0.6f", swlat, swlon, nelat, nelon))
 
+		t38_cmd, t38_args := util.ListToRESPCommand(cmd)
 		t38_rsp, err := t38_client.Do(t38_cmd, t38_args...)
 
 		if err != nil {
