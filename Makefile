@@ -11,6 +11,7 @@ self:   prep
 	mkdir -p src/github.com/whosonfirst/go-whosonfirst-tile38
 	cp -r client src/github.com/whosonfirst/go-whosonfirst-tile38/client
 	cp -r index src/github.com/whosonfirst/go-whosonfirst-tile38/index
+	cp -r util src/github.com/whosonfirst/go-whosonfirst-tile38/util
 	cp -r whosonfirst src/github.com/whosonfirst/go-whosonfirst-tile38/whosonfirst
 	cp tile38.go src/github.com/whosonfirst/go-whosonfirst-tile38/
 	cp -r vendor/src/* src/
@@ -39,6 +40,7 @@ fmt:
 	go fmt cmd/*.go
 	go fmt client/*.go
 	go fmt index/*.go
+	go fmt util/*.go
 	go fmt whosonfirst/*.go
 
 bin:	self
