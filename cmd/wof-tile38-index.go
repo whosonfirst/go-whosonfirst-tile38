@@ -15,7 +15,7 @@ func main() {
 	mode := flag.String("mode", "files", "The mode to use importing data. Valid options are: directory, filelist and files.")
 	geom := flag.String("geometry", "", "Which geometry to index. Valid options are: centroid, bbox or whatever is in the default GeoJSON geometry (default).")
 
-	procs := flag.Int("procs", 200, "The number of concurrent processes to use importing data.")
+	procs := flag.Int("procs", runtime.NumCPU()*2, "The number of concurrent processes to use importing data.")
 	nfs_kludge := flag.Bool("nfs-kludge", false, "Enable the (walk.go) NFS kludge to ignore 'readdirent: errno' 523 errors")
 
 	t38_host := flag.String("tile38-host", "localhost", "The address your Tile38 server is bound to.")
