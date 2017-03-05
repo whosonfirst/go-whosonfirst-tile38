@@ -41,6 +41,7 @@ fmt:
 	go fmt cmd/*.go
 	go fmt client/*.go
 	go fmt index/*.go
+	go fmt tile38.go
 	go fmt util/*.go
 	go fmt whosonfirst/*.go
 

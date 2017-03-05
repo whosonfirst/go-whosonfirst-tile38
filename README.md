@@ -20,7 +20,7 @@ All of this package's dependencies are bundled with the code in the `vendor` dir
 
 ### wof-tile38-bboxd
 
-_Please write me_
+_Please finish writing me_
 
 ```
 ./bin/wof-tile38-bboxd -h
@@ -39,7 +39,11 @@ Usage of ./bin/wof-tile38-bboxd:
 
 #### Example
 
+_This assumes you've created an index called `dxlabs`. See below for details._
+
 ```
+$> wof-tile39-bboxd -tile38-collection dxlabs
+
 $> curl 'localhost:8080?bbox=-33.893217,151.165524,-33.840479,151.281223&per_page=1&cursor=1'
 {"results":[{"wof:id":1108823025,"wof:parent_id":-1,"wof:placetype_id":102312319,"wof:is_superseded":0,"wof:is_deprecated":0}],"cursor":2}
 ```
@@ -49,22 +53,24 @@ $> curl 'localhost:8080?bbox=-33.893217,151.165524,-33.840479,151.281223&per_pag
 ```
 ./bin/wof-tile38-index -h
 Usage of ./bin/wof-tile38-index:
-  -collection string
-    	The name of the Tile38 collection for indexing data.
   -debug
     	Go through all the motions but don't actually index anything.
   -geometry string
-    	Which geometry to index. Valid options are: centroid, bbox or whatever is in the default GeoJSON geometry ("").
+    	Which geometry to index. Valid options are: centroid, bbox or whatever is in the default GeoJSON geometry (default).
   -mode string
     	The mode to use importing data. Valid options are: directory, filelist and files. (default "files")
   -nfs-kludge
     	Enable the (walk.go) NFS kludge to ignore 'readdirent: errno' 523 errors
   -procs int
-    	The number of concurrent processes to use importing data. (default 200)
+    	The number of concurrent processes to use importing data. (default 8)
+  -tile38-collection string
+    	The name of the Tile38 collection for indexing data.
   -tile38-host string
-    	The host of your Tile-38 server. (default "localhost")
+    	The address your Tile38 server is bound to. (default "localhost")
   -tile38-port int
-    	The port of your Tile38 server. (default 9851)
+    	The port number your Tile38 server is bound to. (default 9851)
+  -verbose
+    	Be chatty about what's happening. This is automatically enabled if the -debug flag is set.
 ```
 
 #### Example
@@ -80,7 +86,7 @@ $> wof-tile38-index -procs 200 -collection whosonfirst-geom -procs 200 -mode dir
 If you wanted to index one or more Who's On First "meta" files (they're just CSV files with a `path` column) you might do something like:
 
 ```
-$> wof-tile38-index -collection whosonfirst-geom -mode meta /usr/local/data/whosonfirst-data/meta/wof-county-latest.csv:/usr/local/data/whosonfirst-data/data
+$> wof-tile38-index -tile38-collection whosonfirst-geom -mode meta /usr/local/data/whosonfirst-data/meta/wof-county-latest.csv:/usr/local/data/whosonfirst-data/data
 ```
 
 The syntax for listing meta files to index is a pair of filesystem paths separated by a `:`. The first path is the path to the meta file and the second is the path to the directory containing the actual GeoJSON files. As of this writing it is assumed that the paths listed in the meta files are relative.
@@ -116,7 +122,6 @@ This stores a following fields as a JSON encoded dictionary:
 
 * wof:name
 * wof:country
-* wof:hierarchy
 
 ## See also
 
@@ -124,3 +129,4 @@ This stores a following fields as a JSON encoded dictionary:
 * https://github.com/whosonfirst/py-mapzen-whosonfirst-tile38
 * https://github.com/whosonfirst/go-whosonfirst-crawl
 * https://github.com/whosonfirst/go-whosonfirst-geojson
+* https://github.com/whosonfirst/go-whosonfirst-bbox

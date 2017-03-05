@@ -1,38 +1,44 @@
 package tile38
 
 type Tile38Client interface {
-     Do(string, ...interface{}) (interface{}, error)
+	Do(string, ...interface{}) (interface{}, error)
 }
 
 type Tile38Coord struct {
-     Latitude float64 `json:"lat"`
-     Longitude float64 `json:"lon"`     
+	Latitude  float64 `json:"lat"`
+	Longitude float64 `json:"lon"`
 }
 
 type Tile38Point struct {
-     ID string `json:"id"`
-     Point Tile38Coord `json:"point"`
-     Fields []interface{} `json:"fields"`
+	ID     string        `json:"id"`
+	Point  Tile38Coord   `json:"point"`
+	Fields []interface{} `json:"fields"`
 }
 
 type Tile38Response struct {
-     Ok bool `json:"ok"`
-     Count int `json:"count"`
-     Cursor int `json:"cursor"`
-     Fields []string `json:"fields"`
-     Points []Tile38Point `json:"points"`
+	Ok     bool          `json:"ok"`
+	Count  int           `json:"count"`
+	Cursor int           `json:"cursor"`
+	Fields []string      `json:"fields"`
+	Points []Tile38Point `json:"points"`
 }
 
+/*
+	perhaps you're wondering what the relationship is between these and
+	https://github.com/whosonfirst/go-whosonfirst-api and the answer
+	is so am I, so am I... (20170305/thisisaaronland)
+*/
+
 type WOFResponse struct {
-     Results []WOFResult `json:"results"`
-     Cursor  int `json:"cursor"`     
+	Results []WOFResult `json:"results"`
+	Cursor  int         `json:"cursor"`
 }
 
 type WOFResult struct {
-     WOFID     int64 `json:"wof:id"`
-     WOFParentID     int64 `json:"wof:parent_id"`
-     WOFPlacetypeID     int64 `json:"wof:placetype_id"`
-     WOFSuperseded     int64 `json:"wof:is_superseded"`
-     WOFDeprecated     int64 `json:"wof:is_deprecated"`
-     WOFRepo	       string `json:"wof:repo"`
+	WOFID          int64  `json:"wof:id"`
+	WOFParentID    int64  `json:"wof:parent_id"`
+	WOFPlacetypeID int64  `json:"wof:placetype_id"`
+	WOFSuperseded  int64  `json:"wof:is_superseded"`
+	WOFDeprecated  int64  `json:"wof:is_deprecated"`
+	WOFRepo        string `json:"wof:repo"`
 }
