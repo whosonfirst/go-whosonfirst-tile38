@@ -34,4 +34,5 @@ type WOFResult struct {
      WOFPlacetypeID     int64 `json:"wof:placetype_id"`
      WOFSuperseded     int64 `json:"wof:is_superseded"`
      WOFDeprecated     int64 `json:"wof:is_deprecated"`
+     WOFRepo	       string `json:"wof:repo"`
 }

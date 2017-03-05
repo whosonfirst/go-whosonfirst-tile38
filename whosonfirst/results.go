@@ -2,6 +2,7 @@ package whosonfirst
 
 import (
 	"github.com/whosonfirst/go-whosonfirst-tile38"
+	"strings"
 )
 
 func Tile38ResponseToWOFResponse(rsp tile38.Tile38Response) (tile38.WOFResponse, error) {
@@ -9,6 +10,9 @@ func Tile38ResponseToWOFResponse(rsp tile38.Tile38Response) (tile38.WOFResponse,
 	wof_results := make([]tile38.WOFResult, 0)
 
 	for _, p := range rsp.Points {
+
+		parts := strings.Split(p.ID, "#")
+		repo := parts[1]
 
 		tmp := make(map[string]int64)
 
@@ -23,6 +27,7 @@ func Tile38ResponseToWOFResponse(rsp tile38.Tile38Response) (tile38.WOFResponse,
 			WOFPlacetypeID: tmp["wof:placetype_id"],
 			WOFSuperseded:  tmp["wof:is_superseded"],
 			WOFDeprecated:  tmp["wof:is_deprecated"],
+			WOFRepo:        repo,
 		}
 
 		wof_results = append(wof_results, wof_result)

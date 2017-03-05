@@ -1,5 +1,8 @@
 package client
 
+// This does not work. I can't figure out how/where/what to unserialize the
+// RESP response...
+
 import (
 	"fmt"
 	"github.com/garyburd/redigo/redis"
@@ -18,7 +21,7 @@ type RESPClient struct {
 
 func NewRESPClient(host string, port int) (*RESPClient, error) {
 
-	endpoint := fmt.Sprintf("%s:%d", host, port)
+	t38_endpoint := fmt.Sprintf("%s:%d", host, port)
 
 	// because this:
 	// https://github.com/whosonfirst/go-whosonfirst-tile38/issues/8
@@ -32,7 +35,7 @@ func NewRESPClient(host string, port int) (*RESPClient, error) {
 
 		tries += 1
 
-		conn, err := redis.Dial("tcp", endpoint)
+		conn, err := redis.Dial("tcp", t38_endpoint)
 
 		if err != nil {
 			time.Sleep(time.Second * 1)
@@ -58,7 +61,7 @@ func NewRESPClient(host string, port int) (*RESPClient, error) {
 	pool := &redis.Pool{
 		MaxActive: 1000,
 		Dial: func() (redis.Conn, error) {
-			c, err := redis.Dial("tcp", endpoint)
+			c, err := redis.Dial("tcp", t38_endpoint)
 			if err != nil {
 				return nil, err
 			}
@@ -67,7 +70,7 @@ func NewRESPClient(host string, port int) (*RESPClient, error) {
 	}
 
 	client := RESPClient{
-		Endpoint: endpoint,
+		Endpoint: t38_endpoint,
 		Debug:    false,
 		pool:     pool,
 	}
@@ -86,5 +89,6 @@ func (cl *RESPClient) Do(t38_cmd string, t38_args ...interface{}) (interface{}, 
 		return nil, err
 	}
 
+	// this will fail...
 	return rsp, nil
 }

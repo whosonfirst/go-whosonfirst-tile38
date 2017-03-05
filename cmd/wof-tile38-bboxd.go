@@ -8,8 +8,6 @@ package main
 	* Data that has been indexed by github:whosonfirst/go-whosonfirst-tile38/cmd/wof-tile38-index.go
 
 	To do:
-
-	* Handle cursors/pagination (from Tile38)
 	* Use RESP protocol instead of HTTP (https://github.com/tidwall/tile38/wiki/Go-example-(redigo))
 
 	For example:
@@ -43,8 +41,8 @@ func main() {
 
 	flag.Parse()
 
-	t38_client, err := client.NewRESPClient(*t38_host, *t38_port)
-	// t38_client, err := client.NewHTTPClient(*t38_host, *t38_port)
+	// t38_client, err := client.NewRESPClient(*t38_host, *t38_port)
+	t38_client, err := client.NewHTTPClient(*t38_host, *t38_port)
 
 	if err != nil {
 		log.Fatal(err)
