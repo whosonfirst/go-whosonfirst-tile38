@@ -10,7 +10,7 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-geojson"
 	"github.com/whosonfirst/go-whosonfirst-placetypes"
 	"github.com/whosonfirst/go-whosonfirst-tile38"
-	_ "github.com/whosonfirst/go-whosonfirst-tile38/util"
+	"github.com/whosonfirst/go-whosonfirst-tile38/util"
 	"io"
 	"log"
 	"os"
@@ -18,6 +18,7 @@ import (
 	"regexp"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -235,22 +236,35 @@ func (idx *Tile38Indexer) IndexFeature(feature *geojson.WOFFeature, collection s
 		is_superseded = 1
 	}
 
-	// PLEASE make []string thingies and the util.ListToRESPCommand helper
-	// instead of all these strings... (20170304/thisisaaronland)
+	set_cmd := []string{
+		"SET", collection, key,
+		"FIELD", "wof:id", strconv.Itoa(wofid),
+		"FIELD", "wof:placetype_id", strconv.FormatInt(pt.Id, 10),
+		"FIELD", "wof:parent_id", strconv.Itoa(parent),
+		"FIELD", "wof:is_superseded", strconv.Itoa(is_superseded),
+		"FIELD", "wof:is_deprecated", strconv.Itoa(is_deprecated),
+		"OBJECT", str_geom,
+	}
 
 	if idx.Verbose {
 
+		// make a copy in case we don't want to print out the entire geom
+		// and we're not running in debug mode in which case we'll, you
+		// know... need the geom (20170305/thisisaaronland)
+
+		set_cmd_copy := set_cmd
+
 		if idx.Geometry == "" {
-			log.Println("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "FIELD", "wof:parent_id", parent, "FIELD", "wof:is_superseded", is_superseded, "FIELD", "wof:is_deprecated", is_deprecated, "OBJECT", "...")
-		} else {
-			log.Println("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "FIELD", "wof:parent_id", parent, "FIELD", "wof:is_superseded", is_superseded, "FIELD", "wof:is_deprecated", is_deprecated, "OBJECT", str_geom)
+			set_cmd_copy[len(set_cmd_copy)-1] = "..."
 		}
 
+		log.Println(strings.Join(set_cmd_copy, " "))
 	}
 
 	if !idx.Debug {
 
-		_, err := idx.client.Do("SET", collection, key, "FIELD", "wof:id", wofid, "FIELD", "wof:placetype_id", pt.Id, "FIELD", "wof:parent_id", parent, "FIELD", "wof:is_superseded", is_superseded, "FIELD", "wof:is_deprecated", is_deprecated, "OBJECT", str_geom)
+		t38_cmd, t38_args := util.ListToRESPCommand(set_cmd)
+		_, err := idx.client.Do(t38_cmd, t38_args...)
 
 		if err != nil {
 			return err
@@ -289,13 +303,20 @@ func (idx *Tile38Indexer) IndexFeature(feature *geojson.WOFFeature, collection s
 	// information? We may not always do that (maybe should never do that) but today we do do
 	// that... (20161017/thisisaaronland)
 
+	meta_cmd := []string{
+		"SET", collection, meta_key,
+		"STRING", string(meta_json),
+	}
+
 	if idx.Verbose {
-		log.Println("SET", collection, meta_key, "STRING", string(meta_json))
+		log.Println(strings.Join(meta_cmd, " "))
 	}
 
 	if !idx.Debug {
 
-		_, err := idx.client.Do("SET", collection, meta_key, "STRING", string(meta_json))
+		t38_cmd, t38_args := util.ListToRESPCommand(meta_cmd)
+
+		_, err := idx.client.Do(t38_cmd, t38_args...)
 
 		if err != nil {
 			log.Printf("FAILED to set meta on %s because, %v\n", meta_key, err)
