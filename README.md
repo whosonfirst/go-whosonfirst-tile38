@@ -129,7 +129,7 @@ Usage of ./bin/wof-tile38-index:
   -nfs-kludge
     	Enable the (walk.go) NFS kludge to ignore 'readdirent: errno' 523 errors
   -procs int
-    	The number of concurrent processes to use importing data. (default 8)
+    	The number of concurrent processes to use importing data. (default is number of CPUs * 2)
   -tile38-collection string
     	The name of the Tile38 collection for indexing data.
   -tile38-host string
@@ -147,7 +147,7 @@ For example, if you wanted to index [all the localities](https://whosonfirst.map
 ```
 $> wget https://whosonfirst.mapzen.com/bundles/wof-locality-latest-bundle.tar.bz2
 $> tar -xvjf wof-locality-latest-bundle.tar.bz2
-$> wof-tile38-index -procs 200 -collection whosonfirst-geom -procs 200 -mode directory wof-locality-latest-bundle/data/
+$> wof-tile38-index -collection whosonfirst -mode directory wof-locality-latest-bundle/data/
 ```
 
 If you wanted to index one or more Who's On First "meta" files (they're just CSV files with a `path` column) you might do something like:
