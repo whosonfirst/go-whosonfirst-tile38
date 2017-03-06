@@ -98,7 +98,9 @@ Usage of ./bin/wof-tile38-bboxd:
 
 #### Query parameters
 
-* **bbox** _required_ – Any bounding box format or scheme that is supported by the [go-whosonfirst-bbox](https://github.com/whosonfirst/go-whosonfirst-bbox) package.
+* **bbox** _required_ – Any bounding box format that is supported by the [go-whosonfirst-bbox](https://github.com/whosonfirst/go-whosonfirst-bbox) package.
+* ** scheme** _optional_ A valid [go-whosonfirst-bbox scheme](https://github.com/whosonfirst/go-whosonfirst-bbox#schemes)
+* ** scheme** _optional_ A valid [go-whosonfirst-bbox order](https://github.com/whosonfirst/go-whosonfirst-bbox#order)
 * **per_page** _optional_ The number of results to include with a query. Default is 100.
 * **cursor** _optional_ A pointer to the next set of results for your query.
 

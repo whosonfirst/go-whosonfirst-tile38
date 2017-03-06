@@ -9,10 +9,10 @@ import (
 
 func main() {
 
-	var bbox = flag.String("bbox", "", "...")
-	var scheme = flag.String("scheme", "cardinal", "...")
-	var order = flag.String("order", "swne", "...")
-	var separator = flag.String("separator", ",", "...")
+	var bbox = flag.String("bbox", "", "A bounding box conforming to its scheme.")
+	var scheme = flag.String("scheme", "cardinal", "A scheme describing how the bounding box is formatted. Valid options include: cardinal,marc.")
+	var order = flag.String("order", "swne", "The order in which (cardinal) coordinates are defined. Valid options are: swne,wsen,nwse.")
+	var separator = flag.String("separator", ",", "The string character used to seperate (cardinal) coordinates.")
 
 	flag.Parse()
 
