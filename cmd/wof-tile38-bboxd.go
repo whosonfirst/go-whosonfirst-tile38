@@ -16,6 +16,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/facebookgo/grace/gracehttp"
+	"github.com/whosonfirst/go-sanitize"
 	"github.com/whosonfirst/go-whosonfirst-bbox/parser"
 	"github.com/whosonfirst/go-whosonfirst-tile38"
 	"github.com/whosonfirst/go-whosonfirst-tile38/client"
@@ -47,12 +48,42 @@ func main() {
 
 		query := req.URL.Query()
 
-		bbox := query.Get("bbox")
-		scheme := query.Get("scheme")
-		order := query.Get("order")
+		opts := sanitize.DefaultOptions()
 
-		cursor := query.Get("cursor")
-		per_page := query.Get("per_page")
+		bbox, err := sanitize.SanitizeString(query.Get("bbox"), opts)
+
+		if err != nil {
+			http.Error(rsp, "Invalid bbox parameter", http.StatusBadRequest)
+			return
+		}
+
+		scheme, err := sanitize.SanitizeString(query.Get("scheme"), opts)
+
+		if err != nil {
+			http.Error(rsp, "Invalid scheme parameter", http.StatusBadRequest)
+			return
+		}
+
+		order, err := sanitize.SanitizeString(query.Get("order"), opts)
+
+		if err != nil {
+			http.Error(rsp, "Invalid orderx parameter", http.StatusBadRequest)
+			return
+		}
+
+		cursor, err := sanitize.SanitizeString(query.Get("cursor"), opts)
+
+		if err != nil {
+			http.Error(rsp, "Invalid cursor parameter", http.StatusBadRequest)
+			return
+		}
+
+		per_page, err := sanitize.SanitizeString(query.Get("per_page"), opts)
+
+		if err != nil {
+			http.Error(rsp, "Invalid per_page parameter", http.StatusBadRequest)
+			return
+		}
 
 		if bbox == "" {
 			http.Error(rsp, "Missing bbox parameter", http.StatusBadRequest)
