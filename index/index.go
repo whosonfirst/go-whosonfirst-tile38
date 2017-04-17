@@ -267,6 +267,7 @@ func (idx *Tile38Indexer) IndexFeature(feature *geojson.WOFFeature, collection s
 		_, err := idx.client.Do(t38_cmd, t38_args...)
 
 		if err != nil {
+			log.Println("WHAT WHAT WHAT", err)
 			return err
 		}
 	}
