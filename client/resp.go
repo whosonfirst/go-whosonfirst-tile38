@@ -59,13 +59,13 @@ func NewRESPClient(host string, port int) (*RESPClient, error) {
 	// https://godoc.org/github.com/garyburd/redigo/redis#NewPool
 
 	pool := &redis.Pool{
-		MaxActive:   500,
-		MaxIdle:     500,
-		IdleTimeout: 30 * time.Second,
+		MaxActive:   1000,
+		MaxIdle:     100,
+		IdleTimeout: 10 * time.Second,
+		Wait: true,
 		Dial: func() (redis.Conn, error) {
 
-			c, err := redis.DialTimeout("tcp", t38_endpoint, 100*time.Millisecond, 100*time.Millisecond, 100*time.Millisecond)
-			// c, err := redis.Dial("tcp", t38_endpoint)
+			c, err := redis.Dial("tcp", t38_endpoint)
 
 			if err != nil {
 				return nil, err
