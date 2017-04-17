@@ -76,7 +76,8 @@ func NewRESPClient(host string, port int) (*RESPClient, error) {
 			json_rsp, err := redis.String(c.Do("OUTPUT", "json"))
 
 			if err != nil {
-				return nil, err
+				msg := fmt.Sprintf("Dial failed because %s", err)
+				return nil, errors.New(msg)
 			}
 
 			if !gjson.Get(json_rsp, "ok").Bool() {
