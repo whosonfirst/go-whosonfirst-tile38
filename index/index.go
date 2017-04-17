@@ -11,11 +11,11 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-placetypes"
 	"github.com/whosonfirst/go-whosonfirst-tile38"
 	"github.com/whosonfirst/go-whosonfirst-tile38/util"
+	"github.com/whosonfirst/go-whosonfirst-uri"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -382,6 +382,10 @@ func (idx *Tile38Indexer) IndexMetaFile(csv_path string, collection string, data
 				ch <- true
 			}()
 
+			if !idx.EnsureWOF(abs_path, false) {
+				return
+			}
+
 			idx.IndexFile(abs_path, collection)
 
 		}(ch)
@@ -394,17 +398,9 @@ func (idx *Tile38Indexer) IndexMetaFile(csv_path string, collection string, data
 
 func (idx *Tile38Indexer) IndexDirectory(abs_path string, collection string, nfs_kludge bool) error {
 
-	re_wof, _ := regexp.Compile(`(\d+)\.geojson$`)
-
 	cb := func(abs_path string, info os.FileInfo) error {
 
-		// please make me more like this...
-		// https://github.com/whosonfirst/py-mapzen-whosonfirst-utils/blob/master/mapzen/whosonfirst/utils/__init__.py#L265
-
-		fname := filepath.Base(abs_path)
-
-		if !re_wof.MatchString(fname) {
-			// log.Println("skip", abs_path)
+		if !idx.EnsureWOF(abs_path, false) {
 			return nil
 		}
 
@@ -455,11 +451,15 @@ func (idx *Tile38Indexer) IndexFileList(abs_path string, collection string) erro
 
 		wg.Add(1)
 
-		go func(path string, collection string, wg *sync.WaitGroup, ch chan bool) {
+		go func(abs_path string, collection string, wg *sync.WaitGroup, ch chan bool) {
 
 			defer wg.Done()
 
-			idx.IndexFile(path, collection)
+			if !idx.EnsureWOF(abs_path, false) {
+				return
+			}
+
+			idx.IndexFile(abs_path, collection)
 			ch <- true
 
 		}(path, collection, wg, ch)
@@ -468,4 +468,31 @@ func (idx *Tile38Indexer) IndexFileList(abs_path string, collection string) erro
 	wg.Wait()
 
 	return nil
+}
+
+func (idx *Tile38Indexer) EnsureWOF(abs_path string, allow_alt bool) bool {
+
+	wof, err := uri.IsWOFFile(abs_path)
+
+	if err != nil {
+		log.Println(fmt.Sprintf("Failed to determine whether %s is a WOF file, because %s", abs_path, err))
+		return false
+	}
+
+	if !wof {
+		return false
+	}
+
+	alt, err := uri.IsAltFile(abs_path)
+
+	if err != nil {
+		log.Println(fmt.Sprintf("Failed to determine whether %s is an alt file, because %s", abs_path, err))
+		return false
+	}
+
+	if alt && !allow_alt {
+		return false
+	}
+
+	return true
 }

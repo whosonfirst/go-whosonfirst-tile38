@@ -4,10 +4,9 @@ package gjson
 import (
 	"reflect"
 	"strconv"
-
-	// It's totally safe to use this package, but in case your
-	// project or organization restricts the use of 'unsafe',
-	// there's the "github.com/tidwall/gjson-safe" package.
+	"time"
+	"unicode/utf16"
+	"unicode/utf8"
 	"unsafe"
 
 	"github.com/tidwall/match"
@@ -140,6 +139,12 @@ func (t Result) Float() float64 {
 	case Number:
 		return t.Num
 	}
+}
+
+// Time returns a time.Time representation.
+func (t Result) Time() time.Time {
+	res, _ := time.Parse(time.RFC3339, t.String())
+	return res
 }
 
 // Array returns back an array of values.
@@ -907,7 +912,7 @@ func parseObject(c *parseContext, i int, path string) (int, bool) {
 						break
 					}
 				}
-				i, key, kesc, ok = i, c.json[s:], false, false
+				key, kesc, ok = c.json[s:], false, false
 			parse_key_string_done:
 				break
 			}
@@ -1225,16 +1230,15 @@ func parseArray(c *parseContext, i int, path string) (int, bool) {
 						c.value.Type = JSON
 						c.value.Raw = string(jsons)
 						return i + 1, true
-					} else {
-						if rp.alogok {
-							break
-						}
-						c.value.Raw = val
-						c.value.Type = Number
-						c.value.Num = float64(h - 1)
-						c.calcd = true
-						return i + 1, true
 					}
+					if rp.alogok {
+						break
+					}
+					c.value.Raw = val
+					c.value.Type = Number
+					c.value.Num = float64(h - 1)
+					c.calcd = true
+					return i + 1, true
 				}
 				if len(multires) > 0 && !c.value.Exists() {
 					c.value = Result{
@@ -1361,6 +1365,12 @@ func GetBytes(json []byte, path string) Result {
 	return result
 }
 
+// runeit returns the rune from the the \uXXXX
+func runeit(json string) rune {
+	n, _ := strconv.ParseUint(json[:4], 16, 64)
+	return rune(n)
+}
+
 // unescape unescapes a string
 func unescape(json string) string { //, error) {
 	var str = make([]byte, 0, len(json))
@@ -1369,15 +1379,15 @@ func unescape(json string) string { //, error) {
 		default:
 			str = append(str, json[i])
 		case json[i] < ' ':
-			return "" //, errors.New("invalid character in string")
+			return string(str)
 		case json[i] == '\\':
 			i++
 			if i >= len(json) {
-				return "" //, errors.New("invalid escape sequence")
+				return string(str)
 			}
 			switch json[i] {
 			default:
-				return "" //, errors.New("invalid escape sequence")
+				return string(str)
 			case '\\':
 				str = append(str, '\\')
 			case '/':
@@ -1396,29 +1406,27 @@ func unescape(json string) string { //, error) {
 				str = append(str, '"')
 			case 'u':
 				if i+5 > len(json) {
-					return "" //, errors.New("invalid escape sequence")
+					return string(str)
 				}
-				i++
-				// extract the codepoint
-				var code int
-				for j := i; j < i+4; j++ {
-					switch {
-					default:
-						return "" //, errors.New("invalid escape sequence")
-					case json[j] >= '0' && json[j] <= '9':
-						code += (int(json[j]) - '0') << uint(12-(j-i)*4)
-					case json[j] >= 'a' && json[j] <= 'f':
-						code += (int(json[j]) - 'a' + 10) << uint(12-(j-i)*4)
-					case json[j] >= 'a' && json[j] <= 'f':
-						code += (int(json[j]) - 'a' + 10) << uint(12-(j-i)*4)
+				r := runeit(json[i+1:])
+				i += 5
+				if utf16.IsSurrogate(r) {
+					// need another code
+					if len(json) >= 6 && json[i] == '\\' && json[i+1] == 'u' {
+						// we expect it to be correct so just consume it
+						r = utf16.DecodeRune(r, runeit(json[i+2:]))
+						i += 6
 					}
 				}
-				str = append(str, []byte(string(code))...)
-				i += 3 // only 3 because we will increment on the for-loop
+				// provide enough space to encode the largest utf8 possible
+				str = append(str, 0, 0, 0, 0, 0, 0, 0, 0)
+				n := utf8.EncodeRune(str[len(str)-8:], r)
+				str = str[:len(str)-8+n]
+				i-- // backtrack index by one
 			}
 		}
 	}
-	return string(str) //, nil
+	return string(str)
 }
 
 // Less return true if a token is less than another token.
@@ -1761,12 +1769,14 @@ next_key:
 					}
 					if i < len(paths[j]) {
 						if paths[j][i] == '.' {
-							// matched, but there still more keys in the path
+							// matched, but there are still more keys in path
 							goto match_not_atend
 						}
 					}
-					// matched and at the end of the path
-					goto match_atend
+					if len(paths[j]) <= len(key) || kplen != 0 {
+						// matched and at the end of the path
+						goto match_atend
+					}
 				}
 				// no match, jump to the nomatch label
 				goto nomatch

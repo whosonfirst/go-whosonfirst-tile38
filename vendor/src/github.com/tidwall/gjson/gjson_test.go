@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/buger/jsonparser"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/mailru/easyjson/jlexer"
 	fflib "github.com/pquerna/ffjson/fflib/v1"
 )
@@ -63,6 +64,17 @@ func TestRandomValidStrings(t *testing.T) {
 		}
 	}
 }
+
+func TestEmoji(t *testing.T) {
+	const input = `{"utf8":"Example emoji, KO: \ud83d\udd13, \ud83c\udfc3 OK: \u2764\ufe0f "}`
+	value := Get(input, "utf8")
+	var s string
+	json.Unmarshal([]byte(value.Raw), &s)
+	if value.String() != s {
+		t.Fatalf("expected '%v', got '%v'", s, value.String())
+	}
+}
+
 func testEscapePath(t *testing.T, json, path, expect string) {
 	if Get(json, path).String() != expect {
 		t.Fatalf("expected '%v', got '%v'", expect, Get(json, path).String())
@@ -102,6 +114,7 @@ var basicJSON = `{"age":100, "name":{"here":"B\\\"R"},
 	"items":[1,2,3,{"tags":[1,2,3],"points":[[1,2],[3,4]]},4,5,6,7],
 	"arr":["1",2,"3",{"hello":"world"},"4",5],
 	"vals":[1,2,3,{"sadf":sdf"asdf"}],"name":{"first":"tom","last":null},
+	"created":"2014-05-16T08:28:06.989Z",
 	"loggy":{
 		"programmers": [
     	    {
@@ -127,10 +140,60 @@ var basicJSON = `{"age":100, "name":{"here":"B\\\"R"},
 				"age": 101
 			}
     	]
-	}
+	},
+	"lastly":{"yay":"final"}
 }`
 var basicJSONB = []byte(basicJSON)
 
+func TestTimeResult(t *testing.T) {
+	assert(t, Get(basicJSON, "created").String() == Get(basicJSON, "created").Time().Format(time.RFC3339Nano))
+}
+
+func TestParseAny(t *testing.T) {
+	assert(t, Parse("100").Float() == 100)
+	assert(t, Parse("true").Bool())
+	assert(t, Parse("valse").Bool() == false)
+}
+
+func TestManyVariousPathCounts(t *testing.T) {
+	json := `{"a":"a","b":"b","c":"c"}`
+	counts := []int{3, 4, 7, 8, 9, 15, 16, 17, 31, 32, 33, 63, 64, 65, 127, 128, 129, 255, 256, 257, 511, 512, 513}
+	paths := []string{"a", "b", "c"}
+	expects := []string{"a", "b", "c"}
+	for _, count := range counts {
+		var gpaths []string
+		var gexpects []string
+		for i := 0; i < count; i++ {
+			if i < len(paths) {
+				gpaths = append(gpaths, paths[i])
+				gexpects = append(gexpects, expects[i])
+			} else {
+				gpaths = append(gpaths, fmt.Sprintf("not%d", i))
+				gexpects = append(gexpects, "null")
+			}
+		}
+		results := GetMany(json, gpaths...)
+		for i := 0; i < len(paths); i++ {
+			if results[i].String() != expects[i] {
+				t.Fatalf("expected '%v', got '%v'", expects[i], results[i].String())
+			}
+		}
+	}
+}
+func TestManyRecursion(t *testing.T) {
+	var json string
+	var path string
+	for i := 0; i < 100; i++ {
+		json += `{"a":`
+		path += ".a"
+	}
+	json += `"b"`
+	for i := 0; i < 100; i++ {
+		json += `}`
+	}
+	path = path[1:]
+	assert(t, GetMany(json, path)[0].String() == "b")
+}
 func TestByteSafety(t *testing.T) {
 	jsonb := []byte(`{"name":"Janet","age":38}`)
 	mtok := GetBytes(jsonb, "name")
@@ -150,7 +213,7 @@ func TestByteSafety(t *testing.T) {
 }
 
 func get(json, path string) Result {
-	return GetBytes([]byte(basicJSONB), path)
+	return GetBytes([]byte(json), path)
 }
 
 func TestBasic(t *testing.T) {
@@ -163,8 +226,64 @@ func TestBasic(t *testing.T) {
 	if mtok.String() != `["Brett","Elliotte"]` {
 		t.Fatalf("expected %v, got %v", `["Brett","Elliotte"]`, mtok.String())
 	}
+}
+func TestTypes(t *testing.T) {
+	assert(t, (Result{Type: String}).Type.String() == "String")
+	assert(t, (Result{Type: Number}).Type.String() == "Number")
+	assert(t, (Result{Type: Null}).Type.String() == "Null")
+	assert(t, (Result{Type: False}).Type.String() == "False")
+	assert(t, (Result{Type: True}).Type.String() == "True")
+	assert(t, (Result{Type: JSON}).Type.String() == "JSON")
+	assert(t, (Result{Type: 100}).Type.String() == "")
+	// bool
+	assert(t, (Result{Type: String, Str: "true"}).Bool())
+	assert(t, (Result{Type: True}).Bool())
+	assert(t, (Result{Type: False}).Bool() == false)
+	assert(t, (Result{Type: Number, Num: 1}).Bool())
+	// int
+	assert(t, (Result{Type: String, Str: "1"}).Int() == 1)
+	assert(t, (Result{Type: True}).Int() == 1)
+	assert(t, (Result{Type: False}).Int() == 0)
+	assert(t, (Result{Type: Number, Num: 1}).Int() == 1)
+	// uint
+	assert(t, (Result{Type: String, Str: "1"}).Uint() == 1)
+	assert(t, (Result{Type: True}).Uint() == 1)
+	assert(t, (Result{Type: False}).Uint() == 0)
+	assert(t, (Result{Type: Number, Num: 1}).Uint() == 1)
+	// float
+	assert(t, (Result{Type: String, Str: "1"}).Float() == 1)
+	assert(t, (Result{Type: True}).Float() == 1)
+	assert(t, (Result{Type: False}).Float() == 0)
+	assert(t, (Result{Type: Number, Num: 1}).Float() == 1)
+}
+func TestForEach(t *testing.T) {
+	Result{}.ForEach(nil)
+	Result{Type: String, Str: "Hello"}.ForEach(func(_, value Result) bool {
+		assert(t, value.String() == "Hello")
+		return false
+	})
+	Result{Type: JSON, Raw: "*invalid*"}.ForEach(nil)
 
-	mtok = get(basicJSON, `loggy.programmers`)
+	json := ` {"name": {"first": "Janet","last": "Prichard"},
+	"asd\nf":"\ud83d\udd13","age": 47}`
+	var count int
+	ParseBytes([]byte(json)).ForEach(func(key, value Result) bool {
+		count++
+		return true
+	})
+	assert(t, count == 3)
+	ParseBytes([]byte(`{"bad`)).ForEach(nil)
+	ParseBytes([]byte(`{"ok":"bad`)).ForEach(nil)
+}
+func TestMap(t *testing.T) {
+	assert(t, len(ParseBytes([]byte(`"asdf"`)).Map()) == 0)
+	assert(t, ParseBytes([]byte(`{"asdf":"ghjk"`)).Map()["asdf"].String() == "ghjk")
+	assert(t, len(Result{Type: JSON, Raw: "**invalid**"}.Map()) == 0)
+	assert(t, Result{Type: JSON, Raw: "**invalid**"}.Value() == nil)
+	assert(t, Result{Type: JSON, Raw: "{"}.Map() != nil)
+}
+func TestBasic1(t *testing.T) {
+	mtok := get(basicJSON, `loggy.programmers`)
 	var count int
 	mtok.ForEach(func(key, value Result) bool {
 		if key.Exists() {
@@ -200,7 +319,9 @@ func TestBasic(t *testing.T) {
 	if count != 3 {
 		t.Fatalf("expected %v, got %v", 3, count)
 	}
-	mtok = get(basicJSON, `loggy.programmers.#[age=101].firstName`)
+}
+func TestBasic2(t *testing.T) {
+	mtok := get(basicJSON, `loggy.programmers.#[age=101].firstName`)
 	if mtok.String() != "1002.3" {
 		t.Fatalf("expected %v, got %v", "1002.3", mtok.String())
 	}
@@ -227,25 +348,27 @@ func TestBasic(t *testing.T) {
 	if programmers.Array()[1].Map()["firstName"].Str != "Jason" {
 		t.Fatalf("expected %v, got %v", "Jason", mtok.Map()["programmers"].Array()[1].Map()["firstName"].Str)
 	}
-
+}
+func TestBasic3(t *testing.T) {
+	var mtok Result
 	if Parse(basicJSON).Get("loggy.programmers").Get("1").Get("firstName").Str != "Jason" {
 		t.Fatalf("expected %v, got %v", "Jason", Parse(basicJSON).Get("loggy.programmers").Get("1").Get("firstName").Str)
 	}
 	var token Result
 	if token = Parse("-102"); token.Num != -102 {
-		t.Fatal("expected %v, got %v", -102, token.Num)
+		t.Fatalf("expected %v, got %v", -102, token.Num)
 	}
 	if token = Parse("102"); token.Num != 102 {
-		t.Fatal("expected %v, got %v", 102, token.Num)
+		t.Fatalf("expected %v, got %v", 102, token.Num)
 	}
 	if token = Parse("102.2"); token.Num != 102.2 {
-		t.Fatal("expected %v, got %v", 102.2, token.Num)
+		t.Fatalf("expected %v, got %v", 102.2, token.Num)
 	}
 	if token = Parse(`"hello"`); token.Str != "hello" {
-		t.Fatal("expected %v, got %v", "hello", token.Str)
+		t.Fatalf("expected %v, got %v", "hello", token.Str)
 	}
 	if token = Parse(`"\"he\nllo\""`); token.Str != "\"he\nllo\"" {
-		t.Fatal("expected %v, got %v", "\"he\nllo\"", token.Str)
+		t.Fatalf("expected %v, got %v", "\"he\nllo\"", token.Str)
 	}
 	mtok = get(basicJSON, "loggy.programmers.#.firstName")
 	if len(mtok.Array()) != 4 {
@@ -258,12 +381,13 @@ func TestBasic(t *testing.T) {
 	}
 	mtok = get(basicJSON, "loggy.programmers.#.asd")
 	if mtok.Type != JSON {
-		t.Fatal("expected %v, got %v", JSON, mtok.Type)
+		t.Fatalf("expected %v, got %v", JSON, mtok.Type)
 	}
 	if len(mtok.Array()) != 0 {
 		t.Fatalf("expected 0, got %v", len(mtok.Array()))
 	}
-
+}
+func TestBasic4(t *testing.T) {
 	if get(basicJSON, "items.3.tags.#").Num != 3 {
 		t.Fatalf("expected 3, got %v", get(basicJSON, "items.3.tags.#").Num)
 	}
@@ -279,7 +403,7 @@ func TestBasic(t *testing.T) {
 	if !get(basicJSON, "name.last").Exists() {
 		t.Fatal("expected true, got false")
 	}
-	token = get(basicJSON, "name.here")
+	token := get(basicJSON, "name.here")
 	if token.String() != "B\\\"R" {
 		t.Fatal("expecting 'B\\\"R'", "got", token.String())
 	}
@@ -304,7 +428,9 @@ func TestBasic(t *testing.T) {
 	if token.Value() != nil {
 		t.Fatal("should be nil")
 	}
-	token = get(basicJSON, "age")
+}
+func TestBasic5(t *testing.T) {
+	token := get(basicJSON, "age")
 	if token.String() != "100" {
 		t.Fatal("expecting '100'", "got", token.String())
 	}
@@ -507,17 +633,17 @@ func TestSingleArrayValue(t *testing.T) {
 		t.Fatal("array is empty")
 	}
 	if array[0].String() != "value" {
-		t.Fatal("got %s, should be %s", array[0].String(), "value")
+		t.Fatalf("got %s, should be %s", array[0].String(), "value")
 	}
 
 	array = Get(json, "key2.#").Array()
 	if len(array) != 1 {
-		t.Fatal("got '%v', expected '%v'", len(array), 1)
+		t.Fatalf("got '%v', expected '%v'", len(array), 1)
 	}
 
 	array = Get(json, "key3").Array()
 	if len(array) != 0 {
-		t.Fatal("got '%v', expected '%v'", len(array), 0)
+		t.Fatalf("got '%v', expected '%v'", len(array), 0)
 	}
 
 }
@@ -549,8 +675,8 @@ func TestManyBasic(t *testing.T) {
 		testWatchForFallback = false
 	}()
 	testMany := func(shouldFallback bool, expect string, paths ...string) {
-		results := GetMany(
-			manyJSON,
+		results := GetManyBytes(
+			[]byte(manyJSON),
 			paths...,
 		)
 		if len(results) != len(paths) {
@@ -559,10 +685,9 @@ func TestManyBasic(t *testing.T) {
 		if fmt.Sprintf("%v", results) != expect {
 			t.Fatalf("expected %v, got %v", expect, results)
 		}
-		return
-		if testLastWasFallback != shouldFallback {
-			t.Fatalf("expected %v, got %v", shouldFallback, testLastWasFallback)
-		}
+		//if testLastWasFallback != shouldFallback {
+		//	t.Fatalf("expected %v, got %v", shouldFallback, testLastWasFallback)
+		//}
 	}
 	testMany(false, "[Point]", "position.type")
 	testMany(false, `[emptya ["world peace"] 31]`, ".a", "loves", "age")
@@ -574,6 +699,55 @@ func TestManyBasic(t *testing.T) {
 	// these should fallback
 	testMany(true, `[Cat Nancy]`, "name\\.first", "name.first")
 	testMany(true, `[world]`, strings.Repeat("a.", 70)+"hello")
+}
+func testMany(t *testing.T, json string, paths, expected []string) {
+	testManyAny(t, json, paths, expected, true)
+	testManyAny(t, json, paths, expected, false)
+}
+func testManyAny(t *testing.T, json string, paths, expected []string, bytes bool) {
+	var result []Result
+	for i := 0; i < 2; i++ {
+		var which string
+		if i == 0 {
+			which = "Get"
+			result = nil
+			for j := 0; j < len(expected); j++ {
+				if bytes {
+					result = append(result, GetBytes([]byte(json), paths[j]))
+				} else {
+					result = append(result, Get(json, paths[j]))
+				}
+			}
+		} else if i == 1 {
+			which = "GetMany"
+			if bytes {
+				result = GetManyBytes([]byte(json), paths...)
+			} else {
+				result = GetMany(json, paths...)
+			}
+		}
+		for j := 0; j < len(expected); j++ {
+			if result[j].String() != expected[j] {
+				t.Fatalf("Using key '%s' for '%s'\nexpected '%v', got '%v'", paths[j], which, expected[j], result[j].String())
+			}
+		}
+	}
+}
+func TestIssue20(t *testing.T) {
+	json := `{ "name": "FirstName", "name1": "FirstName1", "address": "address1", "addressDetails": "address2", }`
+	paths := []string{"name", "name1", "address", "addressDetails"}
+	expected := []string{"FirstName", "FirstName1", "address1", "address2"}
+	t.Run("SingleMany", func(t *testing.T) { testMany(t, json, paths, expected) })
+}
+
+func TestIssue21(t *testing.T) {
+	json := `{ "Level1Field1":3, 
+	           "Level1Field4":4, 
+			   "Level1Field2":{ "Level2Field1":[ "value1", "value2" ], 
+			   "Level2Field2":{ "Level3Field1":[ { "key1":"value1" } ] } } }`
+	paths := []string{"Level1Field1", "Level1Field2.Level2Field1", "Level1Field2.Level2Field2.Level3Field1", "Level1Field4"}
+	expected := []string{"3", `[ "value1", "value2" ]`, `[ { "key1":"value1" } ]`, "4"}
+	t.Run("SingleMany", func(t *testing.T) { testMany(t, json, paths, expected) })
 }
 
 func TestRandomMany(t *testing.T) {
@@ -674,12 +848,6 @@ func BenchmarkGJSONGetMany64Paths(t *testing.B) {
 }
 func BenchmarkGJSONGetMany128Paths(t *testing.B) {
 	benchmarkGJSONGetManyN(t, 128)
-}
-func BenchmarkGJSONGetMany256Paths(t *testing.B) {
-	benchmarkGJSONGetManyN(t, 256)
-}
-func BenchmarkGJSONGetMany512Paths(t *testing.B) {
-	benchmarkGJSONGetManyN(t, 512)
 }
 func benchmarkGJSONGetManyN(t *testing.B, n int) {
 	var paths []string
@@ -880,22 +1048,85 @@ func BenchmarkFFJSONLexer(t *testing.B) {
 	t.N *= len(benchPaths) // because we are running against 3 paths
 }
 
-func BenchmarkEasyJSONLexer(t *testing.B) {
-	skipCC := func(l *jlexer.Lexer, n int) {
-		for i := 0; i < n; i++ {
-			l.Skip()
-			l.WantColon()
-			l.Skip()
-			l.WantComma()
-		}
-	}
-	skipGroup := func(l *jlexer.Lexer, n int) {
+func skipCC(l *jlexer.Lexer, n int) {
+	for i := 0; i < n; i++ {
+		l.Skip()
 		l.WantColon()
-		l.Delim('{')
-		skipCC(l, n)
-		l.Delim('}')
+		l.Skip()
 		l.WantComma()
 	}
+}
+func skipGroup(l *jlexer.Lexer, n int) {
+	l.WantColon()
+	l.Delim('{')
+	skipCC(l, n)
+	l.Delim('}')
+	l.WantComma()
+}
+func easyJSONWindowName(t *testing.B, l *jlexer.Lexer) {
+	if l.String() == "window" {
+		l.WantColon()
+		l.Delim('{')
+		skipCC(l, 1)
+		if l.String() == "name" {
+			l.WantColon()
+			if l.String() == "" {
+				t.Fatal("did not find the value")
+			}
+		}
+	}
+}
+func easyJSONImageHOffset(t *testing.B, l *jlexer.Lexer) {
+	if l.String() == "image" {
+		l.WantColon()
+		l.Delim('{')
+		skipCC(l, 1)
+		if l.String() == "hOffset" {
+			l.WantColon()
+			if l.Int() == 0 {
+				t.Fatal("did not find the value")
+			}
+		}
+	}
+}
+func easyJSONTextOnMouseUp(t *testing.B, l *jlexer.Lexer) {
+	if l.String() == "text" {
+		l.WantColon()
+		l.Delim('{')
+		skipCC(l, 5)
+		if l.String() == "onMouseUp" {
+			l.WantColon()
+			if l.String() == "" {
+				t.Fatal("did not find the value")
+			}
+		}
+	}
+}
+func easyJSONWidget(t *testing.B, l *jlexer.Lexer, j int) {
+	l.WantColon()
+	l.Delim('{')
+	switch benchPaths[j] {
+	case "widget.window.name":
+		skipCC(l, 1)
+		easyJSONWindowName(t, l)
+	case "widget.image.hOffset":
+		skipCC(l, 1)
+		if l.String() == "window" {
+			skipGroup(l, 4)
+		}
+		easyJSONImageHOffset(t, l)
+	case "widget.text.onMouseUp":
+		skipCC(l, 1)
+		if l.String() == "window" {
+			skipGroup(l, 4)
+		}
+		if l.String() == "image" {
+			skipGroup(l, 4)
+		}
+		easyJSONTextOnMouseUp(t, l)
+	}
+}
+func BenchmarkEasyJSONLexer(t *testing.B) {
 	t.ReportAllocs()
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
@@ -903,58 +1134,7 @@ func BenchmarkEasyJSONLexer(t *testing.B) {
 			l := &jlexer.Lexer{Data: []byte(exampleJSON)}
 			l.Delim('{')
 			if l.String() == "widget" {
-				l.WantColon()
-				l.Delim('{')
-				switch benchPaths[j] {
-				case "widget.window.name":
-					skipCC(l, 1)
-					if l.String() == "window" {
-						l.WantColon()
-						l.Delim('{')
-						skipCC(l, 1)
-						if l.String() == "name" {
-							l.WantColon()
-							if l.String() == "" {
-								t.Fatal("did not find the value")
-							}
-						}
-					}
-				case "widget.image.hOffset":
-					skipCC(l, 1)
-					if l.String() == "window" {
-						skipGroup(l, 4)
-					}
-					if l.String() == "image" {
-						l.WantColon()
-						l.Delim('{')
-						skipCC(l, 1)
-						if l.String() == "hOffset" {
-							l.WantColon()
-							if l.Int() == 0 {
-								t.Fatal("did not find the value")
-							}
-						}
-					}
-				case "widget.text.onMouseUp":
-					skipCC(l, 1)
-					if l.String() == "window" {
-						skipGroup(l, 4)
-					}
-					if l.String() == "image" {
-						skipGroup(l, 4)
-					}
-					if l.String() == "text" {
-						l.WantColon()
-						l.Delim('{')
-						skipCC(l, 5)
-						if l.String() == "onMouseUp" {
-							l.WantColon()
-							if l.String() == "" {
-								t.Fatal("did not find the value")
-							}
-						}
-					}
-				}
+				easyJSONWidget(t, l, j)
 			}
 		}
 	}
@@ -985,6 +1165,106 @@ func BenchmarkJSONParserGet(t *testing.B) {
 					t.Fatal("did not find the value")
 				}
 			}
+		}
+	}
+	t.N *= len(benchPaths) // because we are running against 3 paths
+}
+func jsoniterWindowName(t *testing.B, iter *jsoniter.Iterator) {
+	var v string
+	for {
+		key := iter.ReadObject()
+		if key != "window" {
+			iter.Skip()
+			continue
+		}
+		for {
+			key := iter.ReadObject()
+			if key != "name" {
+				iter.Skip()
+				continue
+			}
+			v = iter.ReadString()
+			break
+		}
+		break
+	}
+	if v == "" {
+		t.Fatal("did not find the value")
+	}
+}
+
+func jsoniterTextOnMouseUp(t *testing.B, iter *jsoniter.Iterator) {
+	var v string
+	for {
+		key := iter.ReadObject()
+		if key != "text" {
+			iter.Skip()
+			continue
+		}
+		for {
+			key := iter.ReadObject()
+			if key != "onMouseUp" {
+				iter.Skip()
+				continue
+			}
+			v = iter.ReadString()
+			break
+		}
+		break
+	}
+	if v == "" {
+		t.Fatal("did not find the value")
+	}
+}
+func jsoniterImageOffset(t *testing.B, iter *jsoniter.Iterator) {
+	var v int
+	for {
+		key := iter.ReadObject()
+		if key != "image" {
+			iter.Skip()
+			continue
+		}
+		for {
+			key := iter.ReadObject()
+			if key != "hOffset" {
+				iter.Skip()
+				continue
+			}
+			v = iter.ReadInt()
+			break
+		}
+		break
+	}
+	if v == 0 {
+		t.Fatal("did not find the value")
+	}
+}
+func jsoniterWidget(t *testing.B, iter *jsoniter.Iterator, j int) {
+	for {
+		key := iter.ReadObject()
+		if key != "widget" {
+			iter.Skip()
+			continue
+		}
+		switch benchPaths[j] {
+		case "widget.window.name":
+			jsoniterWindowName(t, iter)
+		case "widget.image.hOffset":
+			jsoniterImageOffset(t, iter)
+		case "widget.text.onMouseUp":
+			jsoniterTextOnMouseUp(t, iter)
+		}
+		break
+	}
+}
+
+func BenchmarkJSONIterator(t *testing.B) {
+	t.ReportAllocs()
+	t.ResetTimer()
+	for i := 0; i < t.N; i++ {
+		for j := 0; j < len(benchPaths); j++ {
+			iter := jsoniter.ParseString(exampleJSON)
+			jsoniterWidget(t, iter, j)
 		}
 	}
 	t.N *= len(benchPaths) // because we are running against 3 paths
