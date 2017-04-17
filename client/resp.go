@@ -61,7 +61,7 @@ func NewRESPClient(host string, port int) (*RESPClient, error) {
 	pool := &redis.Pool{
 		MaxActive:   500,
 		MaxIdle:     500,
-		IdleTimeout: 5 * time.Second,
+		IdleTimeout: 30 * time.Second,
 		Dial: func() (redis.Conn, error) {
 
 			c, err := redis.DialTimeout("tcp", t38_endpoint, 100*time.Millisecond, 100*time.Millisecond, 100*time.Millisecond)
