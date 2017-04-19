@@ -317,9 +317,17 @@ func (idx *Tile38Indexer) IndexFeature(feature *geojson.WOFFeature, collection s
 
 		t38_cmd, t38_args := util.ListToRESPCommand(meta_cmd)
 
-		_, err := idx.client.Do(t38_cmd, t38_args...)
+		r, err := idx.client.Do(t38_cmd, t38_args...)
 
 		if err != nil {
+			log.Printf("FAILED to set meta on %s because, %v\n", meta_key, err)
+			return err
+		}
+
+		if !r.(tile38.Tile38Response).Ok {
+
+			err := errors.New(fmt.Sprintf("Tile38 refused to set key because... computers?"))
+
 			log.Printf("FAILED to set meta on %s because, %v\n", meta_key, err)
 			return err
 		}

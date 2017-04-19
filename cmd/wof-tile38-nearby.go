@@ -24,6 +24,8 @@ func main() {
 	var lon = flag.Float64("longitude", 0.0, "A valid longitude.")
 	var radius = flag.Int("radius", 20, "A valid radius (in meters).")
 
+	var debug = flag.Bool("debug", false, "Print debugging information.")
+
 	flag.Parse()
 
 	t38_client, err := client.NewRESPClient(*t38_host, *t38_port)
@@ -48,7 +50,9 @@ func main() {
 
 	cmd = append(cmd, fmt.Sprintf("POINTS POINT %0.6f %0.6f %d", *lat, *lon, *radius))
 
-	log.Println(strings.Join(cmd, " "))
+	if *debug {
+		log.Println(strings.Join(cmd, " "))
+	}
 
 	t38_cmd, t38_args := util.ListToRESPCommand(cmd)
 	t38_rsp, err := t38_client.Do(t38_cmd, t38_args...)
@@ -63,6 +67,39 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// sudo put this in a function somewhere...
+
+	/*
+
+		for _, row := range wof_rsp.Results {
+
+			cmd := []string{
+				"GET",
+				*t38_collection,
+				fmt.Sprintf("%d#meta", row.WOFID),
+			}
+
+			log.Println(cmd)
+
+			meta_cmd, meta_args := util.ListToRESPCommand(cmd)
+			meta_rsp, err := t38_client.Do(meta_cmd, meta_args...)
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			json_meta, err := json.Marshal(meta_rsp)
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			pretty_meta := pretty.Pretty(json_meta)
+
+			fmt.Fprintf(os.Stdout, "%s", pretty_meta)
+		}
+	*/
+
 	json_rsp, err := json.Marshal(wof_rsp)
 
 	if err != nil {
@@ -72,6 +109,5 @@ func main() {
 	pretty_rsp := pretty.Pretty(json_rsp)
 
 	fmt.Fprintf(os.Stdout, "%s", pretty_rsp)
-
 	os.Exit(0)
 }
