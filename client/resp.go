@@ -123,3 +123,30 @@ func (cl *RESPClient) Do(t38_cmd string, t38_args ...interface{}) (interface{}, 
 
 	return t38_rsp, nil
 }
+
+func (cl *RESPClient) DoMeta(t38_cmd string, t38_args ...interface{}) (interface{}, error) {
+
+	conn := cl.pool.Get()
+	defer conn.Close()
+
+	redis_rsp, err := conn.Do(t38_cmd, t38_args...)
+
+	if err != nil {
+		return nil, err
+	}
+
+	json_rsp, err := redis.Bytes(redis_rsp, nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var t38_rsp tile38.Tile38MetaResponse
+	err = json.Unmarshal(json_rsp, &t38_rsp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return t38_rsp, nil
+}

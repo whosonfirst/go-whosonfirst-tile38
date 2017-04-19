@@ -23,7 +23,6 @@ func main() {
 	var lon = flag.Float64("longitude", 0.0, "A valid longitude.")
 	var radius = flag.Int("radius", 20, "A valid radius (in meters).")
 
-	var meta = flag.Bool("meta", false, "To enable WIP meta parsing.")
 	var debug = flag.Bool("debug", false, "Print debugging information.")
 
 	flag.Parse()
@@ -66,38 +65,41 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if *meta {
-		// sudo put this in a function somewhere...
+	// sudo put this in a function somewhere...
+	// sudo make me run concurrently
 
-		for _, row := range wof_rsp.Results {
+	for i, wof_row := range wof_rsp.Results {
 
-			meta_cmd := "GET"
+		meta_cmd := "GET"
 
-			meta_args := []interface{}{
-				*t38_collection,
-				fmt.Sprintf("%d#meta", row.WOFID),
-			}
-
-			if *debug {
-				log.Println(util.RESPCommandToString(meta_cmd, meta_args))
-			}
-
-			meta_rsp, err := t38_client.Do(meta_cmd, meta_args...)
-
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			json_meta, err := json.Marshal(meta_rsp)
-
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			pretty_meta := pretty.Pretty(json_meta)
-
-			fmt.Fprintf(os.Stdout, "%s", pretty_meta)
+		meta_args := []interface{}{
+			*t38_collection,
+			fmt.Sprintf("%d#meta", wof_row.WOFID),
 		}
+
+		if *debug {
+			log.Println(util.RESPCommandToString(meta_cmd, meta_args))
+		}
+
+		meta_rsp, err := t38_client.DoMeta(meta_cmd, meta_args...)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if !meta_rsp.(tile38.Tile38MetaResponse).Ok {
+			continue
+		}
+
+		wof_meta, err := whosonfirst.Tile38MetaResponseToWOFMetaResult(meta_rsp.(tile38.Tile38MetaResponse))
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		wof_rsp.Results[i].WOFName = wof_meta.WOFName
+		wof_rsp.Results[i].WOFCountry = wof_meta.WOFCountry
+
 	}
 
 	json_rsp, err := json.Marshal(wof_rsp)
