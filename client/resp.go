@@ -62,7 +62,7 @@ func NewRESPClient(host string, port int) (*RESPClient, error) {
 		MaxActive:   1000,
 		MaxIdle:     100,
 		IdleTimeout: 10 * time.Second,
-		Wait: true,
+		Wait:        true,
 		Dial: func() (redis.Conn, error) {
 
 			c, err := redis.Dial("tcp", t38_endpoint)

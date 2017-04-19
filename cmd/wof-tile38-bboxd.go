@@ -67,7 +67,7 @@ func main() {
 		order, err := sanitize.SanitizeString(query.Get("order"), opts)
 
 		if err != nil {
-			http.Error(rsp, "Invalid orderx parameter", http.StatusBadRequest)
+			http.Error(rsp, "Invalid order parameter", http.StatusBadRequest)
 			return
 		}
 
