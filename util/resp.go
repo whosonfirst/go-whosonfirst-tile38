@@ -1,39 +1,29 @@
 package util
 
 import (
+	"errors"
+	"fmt"
+	"github.com/whosonfirst/go-whosonfirst-tile38"
 	"strings"
 )
 
-func StringToRESPCommand(str string) (string, []interface{}) {
+func RESPCommandToString(cmd string, args []interface{}) string {
 
-	parts := strings.Split(str, " ")
-	return ListToRESPCommand(parts)
-}
+	str_cmd := []string{cmd}
 
-func ListToRESPCommand(list []string) (string, []interface{}) {
-
-	chunks := make([]string, 0)
-
-	for _, phrase := range list {
-
-		for _, chars := range strings.Split(phrase, " ") {
-			chunks = append(chunks, chars)
-		}
+	for _, a := range args {
+		str_cmd = append(str_cmd, a.(string))
 	}
 
-	cmd := chunks[0]
-	args := ListToRESPArgs(chunks[1:])
-
-	return cmd, args
+	return strings.Join(str_cmd, " ")
 }
 
-func ListToRESPArgs(list []string) []interface{} {
+func EnsureOk(rsp interface{}) error {
 
-	args := make([]interface{}, 0)
+	if !rsp.(tile38.Tile38Response).Ok {
 
-	for _, chars := range list {
-		args = append(args, chars)
+		return errors.New(fmt.Sprintf("Tile38 command failed because... computers?"))
 	}
 
-	return args
+	return nil
 }

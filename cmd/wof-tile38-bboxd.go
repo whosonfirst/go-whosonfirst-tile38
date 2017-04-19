@@ -20,7 +20,7 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-bbox/parser"
 	"github.com/whosonfirst/go-whosonfirst-tile38"
 	"github.com/whosonfirst/go-whosonfirst-tile38/client"
-	"github.com/whosonfirst/go-whosonfirst-tile38/util"
+	_ "github.com/whosonfirst/go-whosonfirst-tile38/util"
 	"github.com/whosonfirst/go-whosonfirst-tile38/whosonfirst"
 	"log"
 	"net/http"
@@ -117,21 +117,30 @@ func main() {
 		nelat := bb.MaxY()
 		nelon := bb.MaxX()
 
-		cmd := []string{
-			fmt.Sprintf("INTERSECTS %s", *t38_collection),
+		t38_cmd := "INTERSECTS"
+
+		t38_args := []interface{}{
+			*t38_collection,
 		}
 
 		if cursor != "" {
-			cmd = append(cmd, fmt.Sprintf("CURSOR %s", cursor))
+			t38_args = append(t38_args, "CURSOR")
+			t38_args = append(t38_args, cursor)
 		}
 
 		if per_page != "" {
-			cmd = append(cmd, fmt.Sprintf("LIMIT %s", per_page))
+			t38_args = append(t38_args, "LIMIT")
+			t38_args = append(t38_args, per_page)
 		}
 
-		cmd = append(cmd, fmt.Sprintf("POINTS BOUNDS %0.6f %0.6f %0.6f %0.6f", swlat, swlon, nelat, nelon))
+		t38_args = append(t38_args, "POINTS")
+		t38_args = append(t38_args, "BOUNDS")
 
-		t38_cmd, t38_args := util.ListToRESPCommand(cmd)
+		t38_args = append(t38_args, swlat)
+		t38_args = append(t38_args, swlon)
+		t38_args = append(t38_args, nelat)
+		t38_args = append(t38_args, nelon)
+
 		t38_rsp, err := t38_client.Do(t38_cmd, t38_args...)
 
 		if err != nil {

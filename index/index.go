@@ -18,7 +18,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
-	"strings"
 	"sync"
 )
 
@@ -236,8 +235,10 @@ func (idx *Tile38Indexer) IndexFeature(feature *geojson.WOFFeature, collection s
 		is_superseded = 1
 	}
 
-	set_cmd := []string{
-		"SET", collection, key,
+	set_cmd := "SET"
+
+	set_args := []interface{}{
+		collection, key,
 		"FIELD", "wof:id", strconv.Itoa(wofid),
 		"FIELD", "wof:placetype_id", strconv.FormatInt(pt.Id, 10),
 		"FIELD", "wof:parent_id", strconv.Itoa(parent),
@@ -252,22 +253,38 @@ func (idx *Tile38Indexer) IndexFeature(feature *geojson.WOFFeature, collection s
 		// and we're not running in debug mode in which case we'll, you
 		// know... need the geom (20170305/thisisaaronland)
 
-		set_cmd_copy := set_cmd
+		if idx.Geometry != "" {
+			log.Println(util.RESPCommandToString(set_cmd, set_args))
+		} else {
 
-		if idx.Geometry == "" {
-			set_cmd_copy[len(set_cmd_copy)-1] = "..."
+			copy_args := make([]interface{}, 0)
+
+			count := len(set_args)
+			last := count - 2
+
+			for _, a := range set_args[:last] {
+				copy_args = append(copy_args, a)
+			}
+
+			copy_args = append(copy_args, "...")
+
+			log.Println(util.RESPCommandToString(set_cmd, copy_args))
 		}
 
-		log.Println(strings.Join(set_cmd_copy, " "))
 	}
 
 	if !idx.Debug {
 
-		t38_cmd, t38_args := util.ListToRESPCommand(set_cmd)
-		_, err := idx.client.Do(t38_cmd, t38_args...)
+		rsp, err := idx.client.Do(set_cmd, set_args...)
 
 		if err != nil {
-			log.Println("WHAT WHAT WHAT", err)
+			return err
+		}
+
+		err = util.EnsureOk(rsp)
+
+		if err != nil {
+			log.Printf("FAILED to SET key for %s because, %v\n", key, err)
 			return err
 		}
 	}
@@ -285,12 +302,9 @@ func (idx *Tile38Indexer) IndexFeature(feature *geojson.WOFFeature, collection s
 		country = "XX"
 	}
 
-	// hier := feature.Hierarchy()
-
 	meta := Meta{
 		Name:    name,
 		Country: country,
-		// Hierarchy: hier,
 	}
 
 	meta_json, err := json.Marshal(meta)
@@ -304,37 +318,37 @@ func (idx *Tile38Indexer) IndexFeature(feature *geojson.WOFFeature, collection s
 	// information? We may not always do that (maybe should never do that) but today we do do
 	// that... (20161017/thisisaaronland)
 
-	meta_cmd := []string{
-		"SET", collection, meta_key,
+	meta_cmd := "SET"
+
+	meta_args := []interface{}{
+		collection, meta_key,
 		"STRING", string(meta_json),
 	}
 
 	if idx.Verbose {
-		log.Println(strings.Join(meta_cmd, " "))
+		log.Println(util.RESPCommandToString(meta_cmd, meta_args))
 	}
 
 	if !idx.Debug {
 
-		t38_cmd, t38_args := util.ListToRESPCommand(meta_cmd)
-
-		r, err := idx.client.Do(t38_cmd, t38_args...)
+		rsp, err := idx.client.Do(meta_cmd, meta_args...)
 
 		if err != nil {
-			log.Printf("FAILED to set meta on %s because, %v\n", meta_key, err)
+			log.Printf("FAILED to SET key for %s because, %v\n", meta_key, err)
 			return err
 		}
 
-		if !r.(tile38.Tile38Response).Ok {
+		err = util.EnsureOk(rsp)
 
-			err := errors.New(fmt.Sprintf("Tile38 refused to set key because... computers?"))
-
-			log.Printf("FAILED to set meta on %s because, %v\n", meta_key, err)
+		if err != nil {
+			log.Printf("FAILED to SET key for %s because, %v\n", meta_key, err)
 			return err
 		}
 	}
 
 	if idx.Verbose {
-		log.Println("OKAY", key, meta_key)
+		log.Println("SET", key)
+		log.Println("SET", meta_key)
 	}
 
 	return nil

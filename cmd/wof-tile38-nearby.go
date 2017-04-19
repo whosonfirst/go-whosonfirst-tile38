@@ -11,7 +11,6 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-tile38/whosonfirst"
 	"log"
 	"os"
-	"strings"
 )
 
 func main() {
@@ -24,6 +23,7 @@ func main() {
 	var lon = flag.Float64("longitude", 0.0, "A valid longitude.")
 	var radius = flag.Int("radius", 20, "A valid radius (in meters).")
 
+	var meta = flag.Bool("meta", false, "To enable WIP meta parsing.")
 	var debug = flag.Bool("debug", false, "Print debugging information.")
 
 	flag.Parse()
@@ -34,28 +34,27 @@ func main() {
 		log.Fatal(err)
 	}
 
-	cmd := []string{
-		fmt.Sprintf("NEARBY %s", *t38_collection),
+	nearby_cmd := "NEARBY"
+
+	nearby_args := []interface{}{
+		*t38_collection,
+		"POINTS", "POINT",
+		fmt.Sprintf("%0.6f", *lat),
+		fmt.Sprintf("%0.6f", *lon),
+		fmt.Sprintf("%d", *radius),
 	}
-
-	/*
-		if cursor != "" {
-			cmd = append(cmd, fmt.Sprintf("CURSOR %s", cursor))
-		}
-
-		if per_page != "" {
-			cmd = append(cmd, fmt.Sprintf("LIMIT %s", per_page))
-		}
-	*/
-
-	cmd = append(cmd, fmt.Sprintf("POINTS POINT %0.6f %0.6f %d", *lat, *lon, *radius))
 
 	if *debug {
-		log.Println(strings.Join(cmd, " "))
+		log.Println(util.RESPCommandToString(nearby_cmd, nearby_args))
 	}
 
-	t38_cmd, t38_args := util.ListToRESPCommand(cmd)
-	t38_rsp, err := t38_client.Do(t38_cmd, t38_args...)
+	t38_rsp, err := t38_client.Do(nearby_cmd, nearby_args...)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = util.EnsureOk(t38_rsp)
 
 	if err != nil {
 		log.Fatal(err)
@@ -67,21 +66,22 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// sudo put this in a function somewhere...
-
-	/*
+	if *meta {
+		// sudo put this in a function somewhere...
 
 		for _, row := range wof_rsp.Results {
 
-			cmd := []string{
-				"GET",
+			meta_cmd := "GET"
+
+			meta_args := []interface{}{
 				*t38_collection,
 				fmt.Sprintf("%d#meta", row.WOFID),
 			}
 
-			log.Println(cmd)
+			if *debug {
+				log.Println(util.RESPCommandToString(meta_cmd, meta_args))
+			}
 
-			meta_cmd, meta_args := util.ListToRESPCommand(cmd)
 			meta_rsp, err := t38_client.Do(meta_cmd, meta_args...)
 
 			if err != nil {
@@ -98,7 +98,7 @@ func main() {
 
 			fmt.Fprintf(os.Stdout, "%s", pretty_meta)
 		}
-	*/
+	}
 
 	json_rsp, err := json.Marshal(wof_rsp)
 
