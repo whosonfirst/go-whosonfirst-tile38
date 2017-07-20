@@ -3,13 +3,44 @@ package whosonfirst
 import (
 	"github.com/tidwall/gjson"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/geojson"
-	"github.com/whosonfirst/go-whosonfirst-geojson-v2/utils"	
+	"github.com/whosonfirst/go-whosonfirst-geojson-v2/utils"
 )
+
+func Centroid(f geojson.Feature) (float64, float64) {
+
+	var lat gjson.Result
+	var lon gjson.Result
+
+	lat = gjson.GetBytes(f.ToBytes(), "properties.lbl:latitude")
+	lon = gjson.GetBytes(f.ToBytes(), "properties.lbl:longitude")
+
+	if lat.Exists() && lon.Exists() {
+		return lat.Float(), lon.Float()
+	}
+
+	lat = gjson.GetBytes(f.ToBytes(), "properties.geom:latitude")
+	lon = gjson.GetBytes(f.ToBytes(), "properties.geom:longitude")
+
+	if lat.Exists() && lon.Exists() {
+		return lat.Float(), lon.Float()
+	}
+
+	return 0.0, 0.0
+}
+
+func Country(f geojson.Feature) string {
+
+	possible := []string{
+		"properties.wof:country",
+	}
+
+	return utils.StringProperty(f, possible, "XX")
+}
 
 func Id(f geojson.Feature) int64 {
 
 	possible := []string{
-		"properties.f:id",
+		"properties.wof:id",
 		"id",
 	}
 
@@ -26,6 +57,15 @@ func Name(f geojson.Feature) string {
 	return utils.StringProperty(f, possible, "a place with no name")
 }
 
+func ParentId(f geojson.Feature) int64 {
+
+	possible := []string{
+		"properties.wof:parent_id",
+	}
+
+	return utils.Int64Property(f, possible, -1)
+}
+
 func Placetype(f geojson.Feature) string {
 
 	possible := []string{
@@ -34,6 +74,15 @@ func Placetype(f geojson.Feature) string {
 	}
 
 	return utils.StringProperty(f, possible, "here be dragons")
+}
+
+func Repo(f geojson.Feature) string {
+
+	possible := []string{
+		"properties.wof:repo",
+	}
+
+	return utils.StringProperty(f, possible, "whosonfirst-data-xx")
 }
 
 func IsCurrent(f geojson.Feature) (bool, bool) {
@@ -122,4 +171,3 @@ func Hierarchy(f geojson.Feature) []map[string]int64 {
 
 	return hierarchies
 }
-

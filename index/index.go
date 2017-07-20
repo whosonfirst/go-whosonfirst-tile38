@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"github.com/whosonfirst/go-whosonfirst-crawl"
 	"github.com/whosonfirst/go-whosonfirst-csv"
-	"github.com/whosonfirst/go-whosonfirst-geojson-v2/geojson"	
+	"github.com/whosonfirst/go-whosonfirst-geojson-v2/geojson"
+	geom "github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/geometry"
+	wof "github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/whosonfirst"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/whosonfirst"
 	"github.com/whosonfirst/go-whosonfirst-placetypes"
 	"github.com/whosonfirst/go-whosonfirst-tile38"
@@ -76,51 +78,59 @@ func (idx *Tile38Indexer) IndexFile(abs_path string, collection string) error {
 
 func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection string) error {
 
-	wofid := feature.Id()
+	wofid := wof.Id(feature)
 	str_wofid := strconv.FormatInt(wofid, 10)
 
-	placetype := feature.Placetype()
+	parent_id := wof.ParentId(feature)
+	str_parent_id := strconv.FormatInt(parent_id, 10)
 
-	body := feature.Body()
+	repo := wof.Repo(feature)
+
+	if repo == "" {
+		msg := fmt.Sprintf("missing wof:repo for %s", str_wofid)
+		return errors.New(msg)
+	}
+
+	placetype := wof.Placetype(feature)
+
+	pt, err := placetypes.GetPlacetypeByName(placetype)
+
+	if err != nil {
+		return err
+	}
+
+	str_placetype_id := strconv.FormatInt(pt.Id, 10)
 
 	var str_geom string
 
 	if idx.Geometry == "" {
 
-		geom := body.Path("geometry")
-		str_geom = geom.String()
+		s, err := geom.ToString(feature)
+
+		if err != nil {
+			return err
+		}
+
+		str_geom = s
 
 	} else if idx.Geometry == "bbox" {
 
-		/*
+		bboxes, err := feature.BoundingBoxes()
 
-			This is not really the best way to deal with the problem since
-			we'll end up with an oversized bounding box. A better way would
-			be to store the bounding box for each polygon in the geom and
-			flag that in the key name. Which is easy but just requires tweaking
-			a few things and really I just want to see if this works at all
-			from a storage perspective right now (20160902/thisisaaronland)
+		if err != nil {
+			return err
+		}
 
-		*/
-
-		var swlon float64
-		var swlat float64
-		var nelon float64
-		var nelat float64
-
-		children, _ := body.S("bbox").Children()
-
-		swlon = children[0].Data().(float64)
-		swlat = children[1].Data().(float64)
-		nelon = children[2].Data().(float64)
-		nelat = children[3].Data().(float64)
+		mbr := bboxes.MBR()
+		sw := mbr.Min
+		ne := mbr.Max
 
 		poly := Polygon{
-			Coords{swlon, swlat},
-			Coords{swlon, nelat},
-			Coords{nelon, nelat},
-			Coords{nelon, swlat},
-			Coords{swlon, swlat},
+			Coords{sw.X, sw.Y},
+			Coords{sw.X, ne.Y},
+			Coords{ne.X, ne.Y},
+			Coords{ne.X, sw.Y},
+			Coords{sw.X, sw.Y},
 		}
 
 		polys := []Polygon{
@@ -142,26 +152,7 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 
 	} else if idx.Geometry == "centroid" {
 
-		// sudo put me in go-whosonfirst-geojson?
-		// (20160829/thisisaaronland)
-
-		var lat float64
-		var lon float64
-		var lat_ok bool
-		var lon_ok bool
-
-		lat, lat_ok = body.Path("properties.lbl:latitude").Data().(float64)
-		lon, lon_ok = body.Path("properties.lbl:longitude").Data().(float64)
-
-		if !lat_ok || !lon_ok {
-
-			lat, lat_ok = body.Path("properties.geom:latitude").Data().(float64)
-			lon, lon_ok = body.Path("properties.geom:longitude").Data().(float64)
-		}
-
-		if !lat_ok || !lon_ok {
-			return errors.New("can't find centroid")
-		}
+		lat, lon := wof.Centroid(feature)
 
 		coords := Coords{lon, lat}
 
@@ -183,12 +174,6 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 		return errors.New("unknown geometry filter")
 	}
 
-	pt, err := placetypes.GetPlacetypeByName(placetype)
-
-	if err != nil {
-		return err
-	}
-
 	if collection == "" {
 		collection = "whosonfirst-" + placetype
 	}
@@ -204,31 +189,19 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 
 	*/
 
-	repo, _ := feature.Repo()
-
-	if repo == "" {
-		msg := fmt.Sprintf("missing wof:repo for %s", str_wofid)
-		return errors.New(msg)
-	}
-
 	key := str_wofid + "#" + repo
-
-	parent_id := feature.ParentId()
 
 	is_superseded := 0
 	is_deprecated := 0
 
-	if feature.IsDeprecated() {
+	if wof.IsDeprecated(feature) {
 		is_deprecated = 1
 	}
 
-	if feature.IsSuperseded() {
+	if wof.IsSuperseded(feature) {
 		is_superseded = 1
 	}
 
-	str_placetype_id := strconv.FormatInt(pt.Id, 10)
-	str_parent_id := strconv.Itoa(parent_id)
-	
 	set_cmd := "SET"
 
 	set_args := []interface{}{
@@ -288,13 +261,8 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 
 	meta_key := str_wofid + "#meta"
 
-	name := feature.Name()
-	country, ok := feature.StringProperty("wof:country")
-
-	if !ok {
-		log.Printf("FAILED to determine country for %s\n", meta_key)
-		country = "XX"
-	}
+	name := wof.Name(feature)
+	country := wof.Country(feature)
 
 	meta := Meta{
 		Name:    name,
