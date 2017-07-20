@@ -7,7 +7,8 @@ import (
 	"fmt"
 	"github.com/whosonfirst/go-whosonfirst-crawl"
 	"github.com/whosonfirst/go-whosonfirst-csv"
-	"github.com/whosonfirst/go-whosonfirst-geojson"
+	"github.com/whosonfirst/go-whosonfirst-geojson-v2/geojson"	
+	"github.com/whosonfirst/go-whosonfirst-geojson-v2/whosonfirst"
 	"github.com/whosonfirst/go-whosonfirst-placetypes"
 	"github.com/whosonfirst/go-whosonfirst-tile38"
 	"github.com/whosonfirst/go-whosonfirst-tile38/util"
@@ -64,7 +65,7 @@ func (idx *Tile38Indexer) IndexFile(abs_path string, collection string) error {
 	// check to see if this is an alt file
 	// https://github.com/whosonfirst/go-whosonfirst-tile38/issues/1
 
-	feature, err := geojson.UnmarshalFile(abs_path)
+	feature, err := whosonfirst.LoadFeatureFromFile(abs_path)
 
 	if err != nil {
 		return err
@@ -73,10 +74,10 @@ func (idx *Tile38Indexer) IndexFile(abs_path string, collection string) error {
 	return idx.IndexFeature(feature, collection)
 }
 
-func (idx *Tile38Indexer) IndexFeature(feature *geojson.WOFFeature, collection string) error {
+func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection string) error {
 
 	wofid := feature.Id()
-	str_wofid := strconv.Itoa(wofid)
+	str_wofid := strconv.FormatInt(wofid, 10)
 
 	placetype := feature.Placetype()
 
@@ -203,12 +204,7 @@ func (idx *Tile38Indexer) IndexFeature(feature *geojson.WOFFeature, collection s
 
 	*/
 
-	repo, ok := feature.StringProperty("wof:repo")
-
-	if !ok {
-		msg := fmt.Sprintf("can't find wof:repo for %s", str_wofid)
-		return errors.New(msg)
-	}
+	repo, _ := feature.Repo()
 
 	if repo == "" {
 		msg := fmt.Sprintf("missing wof:repo for %s", str_wofid)
@@ -217,31 +213,29 @@ func (idx *Tile38Indexer) IndexFeature(feature *geojson.WOFFeature, collection s
 
 	key := str_wofid + "#" + repo
 
-	parent, ok := feature.IntProperty("wof:parent_id")
-
-	if !ok {
-		log.Printf("FAILED to determine parent ID for %s\n", key)
-		parent = -1
-	}
+	parent_id := feature.ParentId()
 
 	is_superseded := 0
 	is_deprecated := 0
 
-	if feature.Deprecated() {
+	if feature.IsDeprecated() {
 		is_deprecated = 1
 	}
 
-	if feature.Superseded() {
+	if feature.IsSuperseded() {
 		is_superseded = 1
 	}
 
+	str_placetype_id := strconv.FormatInt(pt.Id, 10)
+	str_parent_id := strconv.Itoa(parent_id)
+	
 	set_cmd := "SET"
 
 	set_args := []interface{}{
 		collection, key,
-		"FIELD", "wof:id", strconv.Itoa(wofid),
-		"FIELD", "wof:placetype_id", strconv.FormatInt(pt.Id, 10),
-		"FIELD", "wof:parent_id", strconv.Itoa(parent),
+		"FIELD", "wof:id", str_wofid,
+		"FIELD", "wof:placetype_id", str_placetype_id,
+		"FIELD", "wof:parent_id", str_parent_id,
 		"FIELD", "wof:is_superseded", strconv.Itoa(is_superseded),
 		"FIELD", "wof:is_deprecated", strconv.Itoa(is_deprecated),
 		"OBJECT", str_geom,
