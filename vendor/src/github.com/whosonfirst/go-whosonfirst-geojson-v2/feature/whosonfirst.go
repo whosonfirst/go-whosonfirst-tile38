@@ -9,6 +9,7 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/geometry"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/whosonfirst"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/utils"
+	"strconv"
 )
 
 type WOFBoundingBoxes struct {
@@ -75,6 +76,18 @@ func NewWOFFeature(body []byte) (geojson.Feature, error) {
 		return nil, err
 	}
 
+	required := []string{
+		"properties.wof:id",
+		"properties.wof:name",
+		"properties.wof:placetype",		
+	}
+
+	err = utils.EnsureProperties(body, required)
+
+	if err != nil {
+		return nil, err
+	}
+	
 	f := WOFFeature{
 		body: body,
 	}
@@ -124,9 +137,10 @@ func (f *WOFFeature) Type() string {
 	return geometry.Type(f)
 }
 
-func (f *WOFFeature) Id() int64 {
+func (f *WOFFeature) Id() string {
 
-	return whosonfirst.Id(f)
+	id := whosonfirst.Id(f)
+	return strconv.FormatInt(id, 10)
 }
 
 func (f *WOFFeature) Name() string {

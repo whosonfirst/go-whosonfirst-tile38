@@ -8,9 +8,9 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-crawl"
 	"github.com/whosonfirst/go-whosonfirst-csv"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/geojson"
-	geom "github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/geometry"
-	wof "github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/whosonfirst"
-	"github.com/whosonfirst/go-whosonfirst-geojson-v2/whosonfirst"
+	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"	
+	"github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/geometry"
+	"github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/whosonfirst"
 	"github.com/whosonfirst/go-whosonfirst-placetypes"
 	"github.com/whosonfirst/go-whosonfirst-tile38"
 	"github.com/whosonfirst/go-whosonfirst-tile38/util"
@@ -67,7 +67,7 @@ func (idx *Tile38Indexer) IndexFile(abs_path string, collection string) error {
 	// check to see if this is an alt file
 	// https://github.com/whosonfirst/go-whosonfirst-tile38/issues/1
 
-	feature, err := whosonfirst.LoadFeatureFromFile(abs_path)
+	feature, err := feature.LoadWOFFeatureFromFile(abs_path)
 
 	if err != nil {
 		return err
@@ -78,23 +78,23 @@ func (idx *Tile38Indexer) IndexFile(abs_path string, collection string) error {
 
 func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection string) error {
 
-	wofid := wof.Id(feature)
+	wofid := whosonfirst.Id(feature)
 	str_wofid := strconv.FormatInt(wofid, 10)
 
-	parent_id := wof.ParentId(feature)
+	parent_id := whosonfirst.ParentId(feature)
 	str_parent_id := strconv.FormatInt(parent_id, 10)
 
-	name := wof.Name(feature)
-	country := wof.Country(feature)
+	name := whosonfirst.Name(feature)
+	country := whosonfirst.Country(feature)
 
-	repo := wof.Repo(feature)
+	repo := whosonfirst.Repo(feature)
 
 	if repo == "" {
 		msg := fmt.Sprintf("missing wof:repo for %s", str_wofid)
 		return errors.New(msg)
 	}
 
-	placetype := wof.Placetype(feature)
+	placetype := whosonfirst.Placetype(feature)
 
 	pt, err := placetypes.GetPlacetypeByName(placetype)
 
@@ -107,11 +107,11 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 	str_superseded := "0"
 	str_deprecated := "0"
 
-	if wof.IsDeprecated(feature) {
+	if whosonfirst.IsDeprecated(feature) {
 		str_deprecated = "1"
 	}
 
-	if wof.IsSuperseded(feature) {
+	if whosonfirst.IsSuperseded(feature) {
 		str_superseded = "1"
 	}
 
@@ -122,7 +122,7 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 
 	if idx.Geometry == "" {
 
-		s, err := geom.ToString(feature)
+		s, err := geometry.ToString(feature)
 
 		if err != nil {
 			return err
@@ -169,7 +169,7 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 
 	} else if idx.Geometry == "centroid" {
 
-		lat, lon := wof.Centroid(feature)
+		lat, lon := whosonfirst.Centroid(feature)
 
 		coords := Coords{lon, lat}
 
