@@ -84,6 +84,9 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 	parent_id := wof.ParentId(feature)
 	str_parent_id := strconv.FormatInt(parent_id, 10)
 
+	name := wof.Name(feature)
+	country := wof.Country(feature)
+
 	repo := wof.Repo(feature)
 
 	if repo == "" {
@@ -100,6 +103,20 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 	}
 
 	str_placetype_id := strconv.FormatInt(pt.Id, 10)
+
+	str_superseded := "0"
+	str_deprecated := "0"
+
+	if wof.IsDeprecated(feature) {
+		str_deprecated = "1"
+	}
+
+	if wof.IsSuperseded(feature) {
+		str_superseded = "1"
+	}
+
+	geom_key := str_wofid + "#" + repo
+	meta_key := str_wofid + "#meta"
 
 	var str_geom string
 
@@ -189,28 +206,15 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 
 	*/
 
-	key := str_wofid + "#" + repo
-
-	is_superseded := 0
-	is_deprecated := 0
-
-	if wof.IsDeprecated(feature) {
-		is_deprecated = 1
-	}
-
-	if wof.IsSuperseded(feature) {
-		is_superseded = 1
-	}
-
 	set_cmd := "SET"
 
 	set_args := []interface{}{
-		collection, key,
+		collection, geom_key,
 		"FIELD", "wof:id", str_wofid,
 		"FIELD", "wof:placetype_id", str_placetype_id,
 		"FIELD", "wof:parent_id", str_parent_id,
-		"FIELD", "wof:is_superseded", strconv.Itoa(is_superseded),
-		"FIELD", "wof:is_deprecated", strconv.Itoa(is_deprecated),
+		"FIELD", "wof:is_superseded", str_superseded,
+		"FIELD", "wof:is_deprecated", str_deprecated,
 		"OBJECT", str_geom,
 	}
 
@@ -251,18 +255,13 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 		err = util.EnsureOk(rsp)
 
 		if err != nil {
-			log.Printf("FAILED to SET key for %s because, %v\n", key, err)
+			log.Printf("FAILED to SET key for %s because, %v\n", geom_key, err)
 			return err
 		}
 	}
 
 	// https://github.com/whosonfirst/whosonfirst-www-api/blob/master/www/include/lib_whosonfirst_spatial.php#L160
 	// When in doubt check here... also, please make me configurable... maybe? (20161017/thisisaaroland)
-
-	meta_key := str_wofid + "#meta"
-
-	name := wof.Name(feature)
-	country := wof.Country(feature)
 
 	meta := Meta{
 		Name:    name,
@@ -309,7 +308,7 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 	}
 
 	if idx.Verbose {
-		log.Println("SET", key)
+		log.Println("SET", geom_key)
 		log.Println("SET", meta_key)
 	}
 
