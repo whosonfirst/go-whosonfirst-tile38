@@ -25,8 +25,5 @@ vendor-deps: rmdeps deps
 
 fmt:	self
 	go fmt uri.go
-	go fmt cmd/*.go
 
 bin:	self
-	@GOPATH=$(GOPATH) go build -o bin/wof-expand cmd/wof-expand.go
-	@GOPATH=$(GOPATH) go build -o bin/wof-cat cmd/wof-cat.go

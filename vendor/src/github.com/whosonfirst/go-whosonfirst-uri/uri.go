@@ -47,9 +47,9 @@ func NewAlternateURIArgs(source string, function string, extras ...string) *URIA
 
 // See also: https://github.com/whosonfirst/whosonfirst-cookbook/blob/master/how_to/creating_alt_geometries.md
 
-func Id2Fname(id int, args ...*URIArgs) (string, error) {
+func Id2Fname(id int64, args ...*URIArgs) (string, error) {
 
-	str_id := strconv.Itoa(id)
+	str_id := strconv.FormatInt(id, 10)
 	parts := []string{str_id}
 
 	if len(args) == 1 {
@@ -91,10 +91,10 @@ func Id2Fname(id int, args ...*URIArgs) (string, error) {
 	return fname, nil
 }
 
-func Id2Path(id int) (string, error) {
+func Id2Path(id int64) (string, error) {
 
 	parts := []string{}
-	input := strconv.Itoa(id)
+	input := strconv.FormatInt(id, 10)
 
 	for len(input) > 3 {
 
@@ -111,7 +111,7 @@ func Id2Path(id int) (string, error) {
 	return path, nil
 }
 
-func Id2RelPath(id int, args ...*URIArgs) (string, error) {
+func Id2RelPath(id int64, args ...*URIArgs) (string, error) {
 
 	fname, err := Id2Fname(id, args...)
 
@@ -129,7 +129,7 @@ func Id2RelPath(id int, args ...*URIArgs) (string, error) {
 	return rel_path, nil
 }
 
-func Id2AbsPath(root string, id int, args ...*URIArgs) (string, error) {
+func Id2AbsPath(root string, id int64, args ...*URIArgs) (string, error) {
 
 	rel, err := Id2RelPath(id, args...)
 
@@ -199,4 +199,96 @@ func IsAltFile(path string) (bool, error) {
 	alt := re_altfile.MatchString(fname)
 
 	return alt, nil
+}
+
+func IdFromPath(path string) (int64, error) {
+
+	abs_path, err := filepath.Abs(path)
+
+	if err != nil {
+		return -1, err
+	}
+
+	ok, err := IsWOFFile(abs_path)
+
+	if err != nil {
+		return -1, err
+	}
+
+	if !ok {
+		return -1, errors.New("Not a valid WOF file")
+	}
+
+	fname := filepath.Base(abs_path)
+
+	re_wofid, err := regexp.Compile(`^(\d+)(?:\-alt\-.*)?\.geojson`)
+
+	if err != nil {
+		return -1, err
+	}
+
+	match := re_wofid.FindAllStringSubmatch(fname, -1)
+
+	if len(match[0]) != 2 {
+		return -1, errors.New("Unable to parse filename")
+	}
+
+	wofid, err := strconv.ParseInt(match[0][1], 10, 64)
+
+	if err != nil {
+		return -1, err
+	}
+
+	return wofid, nil
+}
+
+func RepoFromPath(path string) (string, error) {
+
+	abs_path, err := filepath.Abs(path)
+
+	if err != nil {
+		return "", err
+	}
+
+	wofid, err := IdFromPath(abs_path)
+
+	if err != nil {
+		return "", err
+	}
+
+	rel_path, err := Id2RelPath(wofid)
+
+	if err != nil {
+		return "", err
+	}
+
+	root_path := strings.Replace(abs_path, rel_path, "", 1)
+	root_path = strings.TrimRight(root_path, "/")
+
+	repo := ""
+
+	for {
+
+		base := filepath.Base(root_path)
+		root_path = filepath.Dir(root_path)
+
+		if strings.HasPrefix(base, "whosonfirst-data") {
+			repo = base
+			break
+		}
+
+		if root_path == "/" {
+			break
+		}
+
+		if root_path == "" {
+			break
+		}
+	}
+
+	if repo == "" {
+		return "", errors.New("Unable to determine repo from path")
+	}
+
+	return repo, nil
 }
