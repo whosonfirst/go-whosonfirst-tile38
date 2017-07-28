@@ -8,7 +8,7 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-crawl"
 	"github.com/whosonfirst/go-whosonfirst-csv"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2"
-	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"	
+	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/geometry"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/whosonfirst"
 	"github.com/whosonfirst/go-whosonfirst-placetypes"
@@ -104,8 +104,22 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 
 	str_placetype_id := strconv.FormatInt(pt.Id, 10)
 
-	str_superseded := "0"
+	str_current := "0"
+	str_ceased := "0"
 	str_deprecated := "0"
+	str_superseded := "0"
+
+	// as in is_current and is_set (as in mz:is_current) or derived
+
+	is_current, _ := whosonfirst.IsCurrent(feature)
+
+	if is_current {
+		str_current = "1"
+	}
+
+	if whosonfirst.IsCeased(feature) {
+		str_ceased = "1"
+	}
 
 	if whosonfirst.IsDeprecated(feature) {
 		str_deprecated = "1"
@@ -213,6 +227,8 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 		"FIELD", "wof:id", str_wofid,
 		"FIELD", "wof:placetype_id", str_placetype_id,
 		"FIELD", "wof:parent_id", str_parent_id,
+		"FIELD", "wof:is_current", str_current,
+		"FIELD", "wof:is_ceased", str_ceased,
 		"FIELD", "wof:is_superseded", str_superseded,
 		"FIELD", "wof:is_deprecated", str_deprecated,
 		"OBJECT", str_geom,
