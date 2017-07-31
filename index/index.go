@@ -260,6 +260,7 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 			copy_args = append(copy_args, "...")
 
 			log.Println(util.RESPCommandToString(set_cmd, copy_args))
+			// log.Println(util.RESPCommandToString(set_cmd, set_args))
 		}
 
 	}
