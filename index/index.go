@@ -49,6 +49,7 @@ type Tile38Indexer struct {
 	Geometry string
 	Debug    bool
 	Verbose  bool
+	Strict   bool
 	client   tile38.Tile38Client
 }
 
@@ -57,6 +58,8 @@ func NewTile38Indexer(client tile38.Tile38Client) (*Tile38Indexer, error) {
 	idx := Tile38Indexer{
 		Geometry: "", // use the default geojson geometry
 		Debug:    false,
+		Verbose:  false,
+		Strict:   true,
 		client:   client,
 	}
 
@@ -417,7 +420,10 @@ func (idx *Tile38Indexer) IndexDirectory(abs_path string, collection string, nfs
 
 		if err != nil {
 			msg := fmt.Sprintf("failed to index %s, because %v", abs_path, err)
-			return errors.New(msg)
+
+			if idx.Strict {
+				return errors.New(msg)
+			}
 		}
 
 		return nil

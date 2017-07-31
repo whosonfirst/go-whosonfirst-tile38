@@ -23,6 +23,8 @@ func main() {
 	t38_port := flag.Int("tile38-port", 9851, "The port number your Tile38 server is bound to.")
 	t38_collection := flag.String("tile38-collection", "", "The name of the Tile38 collection for indexing data.")
 
+	lax := flag.Bool("lax", false, "Disable default strict checking when indexing files.")
+
 	verbose := flag.Bool("verbose", false, "Be chatty about what's happening. This is automatically enabled if the -debug flag is set.")
 	debug := flag.Bool("debug", false, "Go through all the motions but don't actually index anything.")
 
@@ -45,6 +47,10 @@ func main() {
 	indexer.Verbose = *verbose
 	indexer.Debug = *debug
 	indexer.Geometry = *geom
+
+	if *lax {
+		indexer.Strict = false
+	}
 
 	args := flag.Args()
 
@@ -122,7 +128,12 @@ func main() {
 		}
 
 		if err != nil {
-			log.Fatalf("failed to index '%s' in (%s) mode, because %v", path, *mode, err)
+
+			log.Printf("failed to index '%s' in (%s) mode, because %v\n", path, *mode, err)
+
+			if ! *lax {
+				log.Fatal("Giving up")
+			}
 		}
 	}
 
