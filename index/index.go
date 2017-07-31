@@ -24,10 +24,11 @@ import (
 	"sync"
 )
 
+// see notes inre go-whosonfirst-spr below
+
 type Meta struct {
 	Name    string `json:"wof:name"`
 	Country string `json:"wof:country"`
-	// Hierarchy []map[string]int `json:"wof:hierarchy"`
 }
 
 type Coords []float64
@@ -290,6 +291,14 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 		log.Printf("FAILED to marshal JSON on %s because, %v\n", meta_key, err)
 		return err
 	}
+
+	// TBD... just doing this instead of asking T38 consumers to rebuild responses
+	// based on a combination of geom + string keys... (20170731/thisisaaronland)
+
+	// https://github.com/whosonfirst/go-whosonfirst-spr - THIS IS NOT READY FOR USE YET
+	// import spr "github.com/whosonfirst/go-whosonfirst-spr/whosonfirst"
+	// meta, err := spr.NewSPRFromFeature(feature)
+	// meta_json, err := json.Marshal(meta)
 
 	// See the way we are assigning the meta information to the same collection as the spatial
 	// information? We may not always do that (maybe should never do that) but today we do do
