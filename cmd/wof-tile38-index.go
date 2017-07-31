@@ -6,6 +6,7 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-tile38/index"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 )
@@ -51,11 +52,41 @@ func main() {
 
 		if *mode == "directory" {
 
-			err = indexer.IndexDirectory(path, *t38_collection, *nfs_kludge)
+			abs_path, err := filepath.Abs(path)
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			err = indexer.IndexDirectory(abs_path, *t38_collection, *nfs_kludge)
+
+		} else if *mode == "repo" {
+
+			abs_path, err := filepath.Abs(path)
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			data := filepath.Join(abs_path, "data")
+
+			_, err = os.Stat(data)
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			err = indexer.IndexDirectory(data, *t38_collection, *nfs_kludge)
 
 		} else if *mode == "filelist" {
 
-			err = indexer.IndexFileList(path, *t38_collection)
+			abs_path, err := filepath.Abs(path)
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			err = indexer.IndexFileList(abs_path, *t38_collection)
 
 		} else if *mode == "meta" {
 
@@ -80,7 +111,14 @@ func main() {
 			err = indexer.IndexMetaFile(meta_file, *t38_collection, data_root)
 
 		} else {
-			err = indexer.IndexFile(path, *t38_collection)
+
+			abs_path, err := filepath.Abs(path)
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			err = indexer.IndexFile(abs_path, *t38_collection)
 		}
 
 		if err != nil {
