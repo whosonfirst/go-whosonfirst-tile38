@@ -133,12 +133,16 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 		str_superseded = "1"
 	}
 
+	// log.Printf("existential current: %s ceased: %s deprecated: %s superseded: %s\n", str_current, str_ceased, str_deprecated, str_superseded)
+
 	geom_key := str_wofid + "#" + repo
 	meta_key := str_wofid + "#meta"
 
 	var str_geom string
 
 	if idx.Geometry == "" {
+
+		// log.Printf("%s derived geometry from string\n", geom_key)
 
 		s, err := geometry.ToString(feature)
 
@@ -149,6 +153,8 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 		str_geom = s
 
 	} else if idx.Geometry == "bbox" {
+
+		// log.Printf("%s derived geometry from bounding box\n", geom_key)
 
 		bboxes, err := feature.BoundingBoxes()
 
@@ -186,6 +192,8 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 		str_geom = string(bytes)
 
 	} else if idx.Geometry == "centroid" {
+
+		// log.Printf("%s derived geometry from centroid\n", geom_key)
 
 		lat, lon := whosonfirst.Centroid(feature)
 
@@ -260,7 +268,6 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 			copy_args = append(copy_args, "...")
 
 			log.Println(util.RESPCommandToString(set_cmd, copy_args))
-			// log.Println(util.RESPCommandToString(set_cmd, set_args))
 		}
 
 	}
@@ -276,7 +283,8 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 		err = util.EnsureOk(rsp)
 
 		if err != nil {
-			log.Printf("FAILED to SET key for %s because, %v\n", geom_key, err)
+			log.Printf("FAILED to SET (geom) key for %s because, %v\n", geom_key, err)
+			// log.Println(set_args)
 			return err
 		}
 	}
