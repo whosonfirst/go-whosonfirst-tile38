@@ -131,7 +131,7 @@ func main() {
 
 			log.Printf("failed to index '%s' in (%s) mode, because %v\n", path, *mode, err)
 
-			if ! *lax {
+			if !*lax {
 				log.Fatal("Giving up")
 			}
 		}

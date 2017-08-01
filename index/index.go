@@ -195,9 +195,15 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 
 		// log.Printf("%s derived geometry from centroid\n", geom_key)
 
-		lat, lon := whosonfirst.Centroid(feature)
+		centroid, err := whosonfirst.Centroid(feature)
 
-		coords := Coords{lon, lat}
+		if err != nil {
+			return err
+		}
+
+		c := centroid.Coord()
+
+		coords := Coords{c.X, c.Y}
 
 		geom := Geometry{
 			Type:        "Point",

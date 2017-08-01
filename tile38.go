@@ -37,6 +37,9 @@ type Tile38MetaResponse struct {
 	perhaps you're wondering what the relationship is between these and
 	https://github.com/whosonfirst/go-whosonfirst-api and the answer
 	is so am I, so am I... (20170305/thisisaaronland)
+
+	translation: please update this to use go-whosonfirst-spr
+	(20170801/thisisaaronland)
 */
 
 type WOFResponse struct {
