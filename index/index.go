@@ -116,10 +116,14 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 
 	// as in is_current and is_set (as in mz:is_current) or derived
 
-	is_current, _ := whosonfirst.IsCurrent(feature)
+	is_current, is_known := whosonfirst.IsCurrent(feature)
 
-	if is_current {
+	if is_current == true {
 		str_current = "1"
+	}
+
+	if is_current == false && is_known == false {
+		str_current = "-1"
 	}
 
 	if whosonfirst.IsCeased(feature) {
