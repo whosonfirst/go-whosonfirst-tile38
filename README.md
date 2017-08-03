@@ -163,6 +163,6 @@ The syntax for listing meta files to index is a pair of filesystem paths separat
 ## See also
 
 * http://tile38.com
+* https://github.com/whosonfirst/go-whosonfirst-geojson-v2
 * https://github.com/whosonfirst/go-whosonfirst-bbox
-* https://github.com/whosonfirst/go-whosonfirst-geojson
 * https://github.com/whosonfirst/go-whosonfirst-crawl
