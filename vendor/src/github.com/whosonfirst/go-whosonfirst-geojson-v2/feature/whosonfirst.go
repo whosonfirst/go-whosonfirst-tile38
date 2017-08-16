@@ -4,17 +4,40 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/skelterjohn/geom"
+	"github.com/whosonfirst/go-whosonfirst-flags"
+	"github.com/whosonfirst/go-whosonfirst-flags/existential"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/geometry"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/whosonfirst"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/utils"
 	"github.com/whosonfirst/go-whosonfirst-placetypes"
+	"github.com/whosonfirst/go-whosonfirst-spr"
+	"github.com/whosonfirst/go-whosonfirst-uri"
 	"strconv"
 )
 
 type WOFFeature struct {
 	geojson.Feature
 	body []byte
+}
+
+type WOFStandardPlacesResult struct {
+	spr.StandardPlacesResult `json:",omitempty"`
+	WOFId                    int64   `json:"wof:id"`
+	WOFParentId              int64   `json:"wof:parent_id"`
+	WOFName                  string  `json:"wof:name"`
+	WOFPlacetype             string  `json:"wof:placetype"`
+	WOFCountry               string  `json:"wof:country"`
+	WOFRepo                  string  `json:"wof:repo"`
+	WOFPath                  string  `json:"wof:path"`
+	MZURI                    string  `json:"mz:uri"`
+	WOFSupersededBy          []int64 `json:"wof:superseded_by"`
+	WOFSupersedes            []int64 `json:"wof:supersedes"`
+	MZIsCurrent              int64   `json:"mz:is_current"`
+	MZIsCeased               int64   `json:"mz:is_ceased"`
+	MZIsDeprecated           int64   `json:"mz:is_deprecated"`
+	MZIsSuperseded           int64   `json:"mz:is_superseded"`
+	MZIsSuperseding          int64   `json:"mz:is_superseding"`
 }
 
 func EnsureWOFFeature(body []byte) error {
@@ -103,4 +126,115 @@ func (f *WOFFeature) Polygons() ([]geojson.Polygon, error) {
 
 func (f *WOFFeature) ContainsCoord(c geom.Coord) (bool, error) {
 	return geometry.FeatureContainsCoord(f, c)
+}
+
+func (f *WOFFeature) SPR() (spr.StandardPlacesResult, error) {
+
+	id := whosonfirst.Id(f)
+	parent_id := whosonfirst.ParentId(f)
+	name := whosonfirst.Name(f)
+	placetype := whosonfirst.Placetype(f)
+	country := whosonfirst.Country(f)
+	repo := whosonfirst.Repo(f)
+
+	path, err := uri.Id2RelPath(id)
+
+	if err != nil {
+		return nil, err
+	}
+
+	uri, err := uri.Id2AbsPath("https://whosonfirst.mapzen.com/data", id)
+
+	if err != nil {
+		return nil, err
+	}
+
+	is_current := whosonfirst.IsCurrent(f)
+	is_ceased := whosonfirst.IsCeased(f)
+	is_deprecated := whosonfirst.IsDeprecated(f)
+	is_superseded := whosonfirst.IsSuperseded(f)
+	is_superseding := whosonfirst.IsSuperseding(f)
+
+	superseded_by := whosonfirst.SupersededBy(f)
+	supersedes := whosonfirst.Supersedes(f)
+
+	spr := WOFStandardPlacesResult{
+		WOFId:           id,
+		WOFParentId:     parent_id,
+		WOFPlacetype:    placetype,
+		WOFName:         name,
+		WOFCountry:      country,
+		WOFRepo:         repo,
+		WOFPath:         path,
+		MZURI:           uri,
+		MZIsCurrent:     is_current.Flag(),
+		MZIsCeased:      is_ceased.Flag(),
+		MZIsDeprecated:  is_deprecated.Flag(),
+		MZIsSuperseded:  is_superseded.Flag(),
+		MZIsSuperseding: is_superseding.Flag(),
+		WOFSupersedes:   supersedes,
+		WOFSupersededBy: superseded_by,
+	}
+
+	return &spr, nil
+}
+
+func (spr *WOFStandardPlacesResult) Id() int64 {
+	return spr.WOFId
+}
+
+func (spr *WOFStandardPlacesResult) ParentId() int64 {
+	return spr.WOFParentId
+}
+
+func (spr *WOFStandardPlacesResult) Name() string {
+	return spr.WOFName
+}
+
+func (spr *WOFStandardPlacesResult) Placetype() string {
+	return spr.WOFPlacetype
+}
+
+func (spr *WOFStandardPlacesResult) Country() string {
+	return spr.WOFCountry
+}
+
+func (spr *WOFStandardPlacesResult) Repo() string {
+	return spr.WOFRepo
+}
+
+func (spr *WOFStandardPlacesResult) Path() string {
+	return spr.WOFPath
+}
+
+func (spr *WOFStandardPlacesResult) URI() string {
+	return spr.MZURI
+}
+
+func (spr *WOFStandardPlacesResult) IsCurrent() flags.ExistentialFlag {
+	return existential.NewKnownUnknownFlag(spr.MZIsCurrent)
+}
+
+func (spr *WOFStandardPlacesResult) IsCeased() flags.ExistentialFlag {
+	return existential.NewKnownUnknownFlag(spr.MZIsCeased)
+}
+
+func (spr *WOFStandardPlacesResult) IsDeprecated() flags.ExistentialFlag {
+	return existential.NewKnownUnknownFlag(spr.MZIsDeprecated)
+}
+
+func (spr *WOFStandardPlacesResult) IsSuperseded() flags.ExistentialFlag {
+	return existential.NewKnownUnknownFlag(spr.MZIsSuperseded)
+}
+
+func (spr *WOFStandardPlacesResult) IsSuperseding() flags.ExistentialFlag {
+	return existential.NewKnownUnknownFlag(spr.MZIsSuperseding)
+}
+
+func (spr *WOFStandardPlacesResult) SupersededBy() []int64 {
+	return spr.WOFSupersededBy
+}
+
+func (spr *WOFStandardPlacesResult) Supersedes() []int64 {
+	return spr.WOFSupersedes
 }
