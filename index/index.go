@@ -108,35 +108,11 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 
 	str_placetype_id := strconv.FormatInt(pt.Id, 10)
 
-	str_current := "0"
-	str_deprecated := "0"
-	str_ceased := "0"
-	str_superseded := "0"
-	str_superseding := "0"
-
-	// as in is_current and is_set (as in mz:is_current) or derived
-
-	is_current, _ := whosonfirst.IsCurrent(feature)
-
-	if is_current {
-		str_current = "1"
-	}
-
-	if whosonfirst.IsCeased(feature) {
-		str_ceased = "1"
-	}
-
-	if whosonfirst.IsDeprecated(feature) {
-		str_deprecated = "1"
-	}
-
-	if whosonfirst.IsSuperseded(feature) {
-		str_superseded = "1"
-	}
-
-	if whosonfirst.IsSuperseding(feature) {
-		str_superseding = "1"
-	}
+	is_current := whosonfirst.IsCurrent(feature)
+	is_deprecated := whosonfirst.IsDeprecated(feature)
+	is_ceased := whosonfirst.IsCeased(feature)
+	is_superseded := whosonfirst.IsSuperseded(feature)
+	is_superseding := whosonfirst.IsSuperseding(feature)
 
 	// log.Printf("existential current: %s ceased: %s deprecated: %s superseded: %s\n", str_current, str_ceased, str_deprecated, str_superseded)
 
@@ -250,11 +226,11 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 		"FIELD", "wof:id", str_wofid,
 		"FIELD", "wof:placetype_id", str_placetype_id,
 		"FIELD", "wof:parent_id", str_parent_id,
-		"FIELD", "mz:is_current", str_current,
-		"FIELD", "mz:is_deprecated", str_deprecated,
-		"FIELD", "mz:is_ceased", str_ceased,
-		"FIELD", "mz:is_superseded", str_superseded,
-		"FIELD", "mz:is_superseding", str_superseding,
+		"FIELD", "mz:is_current", string(is_current.Flag()),
+		"FIELD", "mz:is_deprecated", string(is_deprecated.Flag()),
+		"FIELD", "mz:is_ceased", string(is_ceased.Flag()),
+		"FIELD", "mz:is_superseded", string(is_superseded.Flag()),
+		"FIELD", "mz:is_superseding", string(is_superseding.Flag()),
 		"OBJECT", str_geom,
 	}
 
