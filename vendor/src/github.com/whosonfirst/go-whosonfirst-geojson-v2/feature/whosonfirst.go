@@ -149,11 +149,35 @@ func (f *WOFFeature) SPR() (spr.StandardPlacesResult, error) {
 		return nil, err
 	}
 
-	is_current := whosonfirst.IsCurrent(f)
-	is_ceased := whosonfirst.IsCeased(f)
-	is_deprecated := whosonfirst.IsDeprecated(f)
-	is_superseded := whosonfirst.IsSuperseded(f)
-	is_superseding := whosonfirst.IsSuperseding(f)
+	is_current, err := whosonfirst.IsCurrent(f)
+
+	if err != nil {
+		return nil, err
+	}
+
+	is_ceased, err := whosonfirst.IsCeased(f)
+
+	if err != nil {
+		return nil, err
+	}
+
+	is_deprecated, err := whosonfirst.IsDeprecated(f)
+
+	if err != nil {
+		return nil, err
+	}
+
+	is_superseded, err := whosonfirst.IsSuperseded(f)
+
+	if err != nil {
+		return nil, err
+	}
+
+	is_superseding, err := whosonfirst.IsSuperseding(f)
+
+	if err != nil {
+		return nil, err
+	}
 
 	superseded_by := whosonfirst.SupersededBy(f)
 	supersedes := whosonfirst.Supersedes(f)
@@ -212,23 +236,23 @@ func (spr *WOFStandardPlacesResult) URI() string {
 }
 
 func (spr *WOFStandardPlacesResult) IsCurrent() flags.ExistentialFlag {
-	return existential.NewKnownUnknownFlag(spr.MZIsCurrent)
+	return existentialFlag(spr.MZIsCurrent)
 }
 
 func (spr *WOFStandardPlacesResult) IsCeased() flags.ExistentialFlag {
-	return existential.NewKnownUnknownFlag(spr.MZIsCeased)
+	return existentialFlag(spr.MZIsCeased)
 }
 
 func (spr *WOFStandardPlacesResult) IsDeprecated() flags.ExistentialFlag {
-	return existential.NewKnownUnknownFlag(spr.MZIsDeprecated)
+	return existentialFlag(spr.MZIsDeprecated)
 }
 
 func (spr *WOFStandardPlacesResult) IsSuperseded() flags.ExistentialFlag {
-	return existential.NewKnownUnknownFlag(spr.MZIsSuperseded)
+	return existentialFlag(spr.MZIsSuperseded)
 }
 
 func (spr *WOFStandardPlacesResult) IsSuperseding() flags.ExistentialFlag {
-	return existential.NewKnownUnknownFlag(spr.MZIsSuperseding)
+	return existentialFlag(spr.MZIsSuperseding)
 }
 
 func (spr *WOFStandardPlacesResult) SupersededBy() []int64 {
@@ -237,4 +261,15 @@ func (spr *WOFStandardPlacesResult) SupersededBy() []int64 {
 
 func (spr *WOFStandardPlacesResult) Supersedes() []int64 {
 	return spr.WOFSupersedes
+}
+
+// we're going to assume that this won't fail since we already go through
+// the process of instantiating `flags.ExistentialFlag` thingies in SPR()
+// if we need to we'll just cache those instances in the `spr *WOFStandardPlacesResult`
+// thingy (and omit them from the JSON output) but today that is unnecessary
+// (20170816/thisisaaronland)
+
+func existentialFlag(i int64) flags.ExistentialFlag {
+	fl, _ := existential.NewKnownUnknownFlag(i)
+	return fl
 }

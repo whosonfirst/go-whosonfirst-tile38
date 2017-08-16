@@ -108,11 +108,35 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 
 	str_placetype_id := strconv.FormatInt(pt.Id, 10)
 
-	is_current := whosonfirst.IsCurrent(feature)
-	is_deprecated := whosonfirst.IsDeprecated(feature)
-	is_ceased := whosonfirst.IsCeased(feature)
-	is_superseded := whosonfirst.IsSuperseded(feature)
-	is_superseding := whosonfirst.IsSuperseding(feature)
+	is_current, err := whosonfirst.IsCurrent(feature)
+
+	if err != nil {
+		return err
+	}
+
+	is_deprecated, err := whosonfirst.IsDeprecated(feature)
+
+	if err != nil {
+		return err
+	}
+
+	is_ceased, err := whosonfirst.IsCeased(feature)
+
+	if err != nil {
+		return err
+	}
+
+	is_superseded, err := whosonfirst.IsSuperseded(feature)
+
+	if err != nil {
+		return err
+	}
+
+	is_superseding, err := whosonfirst.IsSuperseding(feature)
+
+	if err != nil {
+		return err
+	}
 
 	// log.Printf("existential current: %s ceased: %s deprecated: %s superseded: %s\n", str_current, str_ceased, str_deprecated, str_superseded)
 

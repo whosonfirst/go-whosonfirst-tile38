@@ -125,7 +125,7 @@ func Repo(f geojson.Feature) string {
 	return utils.StringProperty(f.Bytes(), possible, "whosonfirst-data-xx")
 }
 
-func IsCurrent(f geojson.Feature) flags.ExistentialFlag {
+func IsCurrent(f geojson.Feature) (flags.ExistentialFlag, error) {
 
 	possible := []string{
 		"properties.mz:is_current",
@@ -137,19 +137,31 @@ func IsCurrent(f geojson.Feature) flags.ExistentialFlag {
 		return existential.NewKnownUnknownFlag(v)
 	}
 
-	d := IsDeprecated(f)
+	d, err := IsDeprecated(f)
+
+	if err != nil {
+		return nil, err
+	}
 
 	if d.IsTrue() && d.IsKnown() {
 		return existential.NewKnownUnknownFlag(0)
 	}
 
-	c := IsCeased(f)
+	c, err := IsCeased(f)
+
+	if err != nil {
+		return nil, err
+	}
 
 	if c.IsTrue() && c.IsKnown() {
 		return existential.NewKnownUnknownFlag(0)
 	}
 
-	s := IsSuperseded(f)
+	s, err := IsSuperseded(f)
+
+	if err != nil {
+		return nil, err
+	}
 
 	if s.IsTrue() && s.IsKnown() {
 		return existential.NewKnownUnknownFlag(0)
@@ -158,7 +170,7 @@ func IsCurrent(f geojson.Feature) flags.ExistentialFlag {
 	return existential.NewKnownUnknownFlag(-1)
 }
 
-func IsDeprecated(f geojson.Feature) flags.ExistentialFlag {
+func IsDeprecated(f geojson.Feature) (flags.ExistentialFlag, error) {
 
 	possible := []string{
 		"properties.edtf:deprecated",
@@ -178,7 +190,7 @@ func IsDeprecated(f geojson.Feature) flags.ExistentialFlag {
 	}
 }
 
-func IsCeased(f geojson.Feature) flags.ExistentialFlag {
+func IsCeased(f geojson.Feature) (flags.ExistentialFlag, error) {
 
 	possible := []string{
 		"properties.edtf:cessation",
@@ -198,7 +210,7 @@ func IsCeased(f geojson.Feature) flags.ExistentialFlag {
 	}
 }
 
-func IsSuperseded(f geojson.Feature) flags.ExistentialFlag {
+func IsSuperseded(f geojson.Feature) (flags.ExistentialFlag, error) {
 
 	by := gjson.GetBytes(f.Bytes(), "properties.wof:superseded_by")
 
@@ -209,7 +221,7 @@ func IsSuperseded(f geojson.Feature) flags.ExistentialFlag {
 	return existential.NewKnownUnknownFlag(0)
 }
 
-func IsSuperseding(f geojson.Feature) flags.ExistentialFlag {
+func IsSuperseding(f geojson.Feature) (flags.ExistentialFlag, error) {
 
 	sc := gjson.GetBytes(f.Bytes(), "properties.wof:supersedes")
 

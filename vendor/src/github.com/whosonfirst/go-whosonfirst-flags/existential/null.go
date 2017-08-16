@@ -8,10 +8,10 @@ type NullFlag struct {
 	flags.ExistentialFlag
 }
 
-func NewNullFlag() flags.ExistentialFlag {
+func NewNullFlag() (flags.ExistentialFlag, error) {
 
 	n := NullFlag{}
-	return &n
+	return &n, nil
 }
 
 func (f *NullFlag) Flag() int64 {
