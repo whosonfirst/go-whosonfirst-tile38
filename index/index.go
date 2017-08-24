@@ -220,11 +220,11 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 
 	*/
 
-	str_current := fmt.Sprintf("%s", is_current.Flag())
-	str_deprecated := fmt.Sprintf("%s", is_deprecated.Flag())
-	str_ceased := fmt.Sprintf("%s", is_ceased.Flag())
-	str_superseded := fmt.Sprintf("%s", is_superseded.Flag())
-	str_superseding := fmt.Sprintf("%s", is_superseding.Flag())
+	str_current := is_current.StringFlag()
+	str_deprecated := is_deprecated.StringFlag()
+	str_ceased := is_ceased.StringFlag()
+	str_superseded := is_superseded.StringFlag()
+	str_superseding := is_superseding.StringFlag()
 
 	set_cmd := "SET"
 
