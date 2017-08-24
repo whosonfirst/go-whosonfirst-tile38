@@ -243,6 +243,12 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 
 	*/
 
+	str_current := fmt.Sprintf("%s", is_current.Flag())
+	str_deprecated := fmt.Sprintf("%s", is_deprecated.Flag())
+	str_ceased := fmt.Sprintf("%s", is_ceased.Flag())
+	str_superseded := fmt.Sprintf("%s", is_superseded.Flag())
+	str_superseding := fmt.Sprintf("%s", is_superseding.Flag())
+
 	set_cmd := "SET"
 
 	set_args := []interface{}{
@@ -250,11 +256,11 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 		"FIELD", "wof:id", str_wofid,
 		"FIELD", "wof:placetype_id", str_placetype_id,
 		"FIELD", "wof:parent_id", str_parent_id,
-		"FIELD", "mz:is_current", string(is_current.Flag()),
-		"FIELD", "mz:is_deprecated", string(is_deprecated.Flag()),
-		"FIELD", "mz:is_ceased", string(is_ceased.Flag()),
-		"FIELD", "mz:is_superseded", string(is_superseded.Flag()),
-		"FIELD", "mz:is_superseding", string(is_superseding.Flag()),
+		"FIELD", "mz:is_current", str_current,
+		"FIELD", "mz:is_deprecated", str_deprecated,
+		"FIELD", "mz:is_ceased", str_ceased,
+		"FIELD", "mz:is_superseded", str_superseded,
+		"FIELD", "mz:is_superseding", str_superseding,
 		"OBJECT", str_geom,
 	}
 
