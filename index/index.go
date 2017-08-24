@@ -1,27 +1,18 @@
 package index
 
 import (
-	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/whosonfirst/go-whosonfirst-crawl"
-	"github.com/whosonfirst/go-whosonfirst-csv"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2"
-	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/geometry"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/whosonfirst"
 	"github.com/whosonfirst/go-whosonfirst-placetypes"
 	"github.com/whosonfirst/go-whosonfirst-tile38"
 	"github.com/whosonfirst/go-whosonfirst-tile38/util"
 	"github.com/whosonfirst/go-whosonfirst-uri"
-	"io"
 	"log"
-	"os"
-	"path/filepath"
-	"runtime"
 	"strconv"
-	"sync"
 )
 
 // see notes inre go-whosonfirst-spr below
@@ -64,20 +55,6 @@ func NewTile38Indexer(client tile38.Tile38Client) (*Tile38Indexer, error) {
 	}
 
 	return &idx, nil
-}
-
-func (idx *Tile38Indexer) IndexFile(abs_path string, collection string) error {
-
-	// check to see if this is an alt file
-	// https://github.com/whosonfirst/go-whosonfirst-tile38/issues/1
-
-	feature, err := feature.LoadWOFFeatureFromFile(abs_path)
-
-	if err != nil {
-		return err
-	}
-
-	return idx.IndexFeature(feature, collection)
 }
 
 func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection string) error {
@@ -369,147 +346,6 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 
 	return nil
 
-}
-
-func (idx *Tile38Indexer) IndexMetaFile(csv_path string, collection string, data_root string) error {
-
-	reader, err := csv.NewDictReaderFromPath(csv_path)
-
-	if err != nil {
-		return err
-	}
-
-	count := runtime.GOMAXPROCS(0) // perversely this is how we get the count...
-	ch := make(chan bool, count)
-
-	go func() {
-		for i := 0; i < count; i++ {
-			ch <- true
-		}
-	}()
-
-	wg := new(sync.WaitGroup)
-
-	for {
-		row, err := reader.Read()
-
-		if err == io.EOF {
-			break
-		}
-
-		if err != nil {
-			return err
-		}
-
-		rel_path, ok := row["path"]
-
-		if !ok {
-			msg := fmt.Sprintf("missing 'path' column in meta file")
-			return errors.New(msg)
-		}
-
-		abs_path := filepath.Join(data_root, rel_path)
-
-		<-ch
-
-		wg.Add(1)
-
-		go func(ch chan bool) {
-
-			defer func() {
-				wg.Done()
-				ch <- true
-			}()
-
-			if !idx.EnsureWOF(abs_path, false) {
-				return
-			}
-
-			idx.IndexFile(abs_path, collection)
-
-		}(ch)
-	}
-
-	wg.Wait()
-
-	return nil
-}
-
-func (idx *Tile38Indexer) IndexDirectory(abs_path string, collection string, nfs_kludge bool) error {
-
-	cb := func(abs_path string, info os.FileInfo) error {
-
-		if !idx.EnsureWOF(abs_path, false) {
-			return nil
-		}
-
-		err := idx.IndexFile(abs_path, collection)
-
-		if err != nil {
-			msg := fmt.Sprintf("failed to index %s, because %v", abs_path, err)
-
-			if idx.Strict {
-				return errors.New(msg)
-			}
-		}
-
-		return nil
-	}
-
-	c := crawl.NewCrawler(abs_path)
-	c.NFSKludge = nfs_kludge
-
-	return c.Crawl(cb)
-}
-
-func (idx *Tile38Indexer) IndexFileList(abs_path string, collection string) error {
-
-	file, err := os.Open(abs_path)
-
-	if err != nil {
-		return err
-	}
-
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-
-	count := runtime.GOMAXPROCS(0) // perversely this is how we get the count...
-	ch := make(chan bool, count)
-
-	go func() {
-		for i := 0; i < count; i++ {
-			ch <- true
-		}
-	}()
-
-	wg := new(sync.WaitGroup)
-
-	for scanner.Scan() {
-
-		<-ch
-
-		path := scanner.Text()
-
-		wg.Add(1)
-
-		go func(abs_path string, collection string, wg *sync.WaitGroup, ch chan bool) {
-
-			defer wg.Done()
-
-			if !idx.EnsureWOF(abs_path, false) {
-				return
-			}
-
-			idx.IndexFile(abs_path, collection)
-			ch <- true
-
-		}(path, collection, wg, ch)
-	}
-
-	wg.Wait()
-
-	return nil
 }
 
 func (idx *Tile38Indexer) EnsureWOF(abs_path string, allow_alt bool) bool {

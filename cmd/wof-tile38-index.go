@@ -1,14 +1,18 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"
+	wof "github.com/whosonfirst/go-whosonfirst-index"
+	"github.com/whosonfirst/go-whosonfirst-index/utils"
+	"github.com/whosonfirst/go-whosonfirst-log"
 	"github.com/whosonfirst/go-whosonfirst-tile38/client"
 	"github.com/whosonfirst/go-whosonfirst-tile38/index"
-	"log"
+	"github.com/whosonfirst/go-whosonfirst-timer"
+	"io"
 	"os"
-	"path/filepath"
 	"runtime"
-	"strings"
 )
 
 func main() {
@@ -17,7 +21,6 @@ func main() {
 	geom := flag.String("geometry", "", "Which geometry to index. Valid options are: centroid, bbox or whatever is in the default GeoJSON geometry (default).")
 
 	procs := flag.Int("procs", runtime.NumCPU()*2, "The number of concurrent processes to use importing data.")
-	nfs_kludge := flag.Bool("nfs-kludge", false, "Enable the (walk.go) NFS kludge to ignore 'readdirent: errno' 523 errors")
 
 	t38_host := flag.String("tile38-host", "localhost", "The address your Tile38 server is bound to.")
 	t38_port := flag.Int("tile38-port", 9851, "The port number your Tile38 server is bound to.")
@@ -34,12 +37,14 @@ func main() {
 		*verbose = true
 	}
 
+	logger := log.SimpleWOFLogger()
+
 	runtime.GOMAXPROCS(*procs)
 
 	t38_client, err := client.NewRESPClient(*t38_host, *t38_port)
 
 	if err != nil {
-		log.Fatalf("failed to create Tile38Client (%s:%d) because %v", *t38_host, *t38_port, err)
+		logger.Fatal("failed to create Tile38Client (%s:%d) because %v", *t38_host, *t38_port, err)
 	}
 
 	indexer, err := index.NewTile38Indexer(t38_client)
@@ -52,89 +57,45 @@ func main() {
 		indexer.Strict = false
 	}
 
-	args := flag.Args()
+	cb := func(fh io.Reader, ctx context.Context, args ...interface{}) error {
 
-	for _, path := range args {
-
-		if *mode == "directory" {
-
-			abs_path, err := filepath.Abs(path)
-
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			err = indexer.IndexDirectory(abs_path, *t38_collection, *nfs_kludge)
-
-		} else if *mode == "repo" {
-
-			abs_path, err := filepath.Abs(path)
-
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			data := filepath.Join(abs_path, "data")
-
-			_, err = os.Stat(data)
-
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			err = indexer.IndexDirectory(data, *t38_collection, *nfs_kludge)
-
-		} else if *mode == "filelist" {
-
-			abs_path, err := filepath.Abs(path)
-
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			err = indexer.IndexFileList(abs_path, *t38_collection)
-
-		} else if *mode == "meta" {
-
-			parts := strings.Split(path, ":")
-
-			if len(parts) != 2 {
-				log.Fatal("Invalid path declaration for a meta file")
-			}
-
-			for _, p := range parts {
-
-				_, err := os.Stat(p)
-
-				if os.IsNotExist(err) {
-					log.Fatal("Path does not exist", p)
-				}
-			}
-
-			meta_file := parts[0]
-			data_root := parts[1]
-
-			err = indexer.IndexMetaFile(meta_file, *t38_collection, data_root)
-
-		} else {
-
-			abs_path, err := filepath.Abs(path)
-
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			err = indexer.IndexFile(abs_path, *t38_collection)
-		}
+		ok, err := utils.IsPrincipalWOFRecord(fh, ctx)
 
 		if err != nil {
-
-			log.Printf("failed to index '%s' in (%s) mode, because %v\n", path, *mode, err)
-
-			if !*lax {
-				log.Fatal("Giving up")
-			}
+			return err
 		}
+
+		if !ok {
+			return nil
+		}
+
+		f, err := feature.LoadWOFFeatureFromReader(fh)
+
+		if err != nil {
+			return err
+		}
+
+		return indexer.IndexFeature(f, *t38_collection)
+	}
+
+	wof_indexer, err := wof.NewIndexer(*mode, cb)
+
+	if err != nil {
+		logger.Fatal("Failed to create new indexer because %s", err)
+	}
+
+	tm, err := timer.NewDefaultTimer()
+
+	if err != nil {
+		logger.Fatal("Failed to create timer because %s", err)
+	}
+
+	defer tm.Stop()
+
+	err = wof_indexer.IndexPaths(flag.Args())
+
+	if err != nil {
+		logger.Fatal("Failed to index paths in %s mode because %s", *mode, err)
 	}
 
 	os.Exit(0)

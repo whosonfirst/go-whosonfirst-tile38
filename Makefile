@@ -14,7 +14,7 @@ self:   prep
 	cp -r util src/github.com/whosonfirst/go-whosonfirst-tile38/util
 	cp -r whosonfirst src/github.com/whosonfirst/go-whosonfirst-tile38/whosonfirst
 	cp tile38.go src/github.com/whosonfirst/go-whosonfirst-tile38/
-	cp -r vendor/src/* src/
+	cp -r vendor/* src/
 	cp -r src/github.com/whosonfirst/go-whosonfirst-bbox/vendor/src/github.com/thisisaaronland src/github.com/
 	cp -r src/github.com/whosonfirst/go-whosonfirst-geojson-v2/vendor/src/github.com/whosonfirst/go-whosonfirst-hash src/github.com/whosonfirst/
 
@@ -25,11 +25,12 @@ deps:
 	@GOPATH=$(GOPATH) go get -u "github.com/facebookgo/grace/gracehttp"
 	@GOPATH=$(GOPATH) go get -u "github.com/whosonfirst/go-sanitize"
 	@GOPATH=$(GOPATH) go get -u "github.com/whosonfirst/go-whosonfirst-bbox"
-	@GOPATH=$(GOPATH) go get -u "github.com/whosonfirst/go-whosonfirst-crawl"
-	@GOPATH=$(GOPATH) go get -u "github.com/whosonfirst/go-whosonfirst-csv"
 	@GOPATH=$(GOPATH) go get -u "github.com/whosonfirst/go-whosonfirst-geojson-v2"
+	@GOPATH=$(GOPATH) go get -u "github.com/whosonfirst/go-whosonfirst-index"
+	@GOPATH=$(GOPATH) go get -u "github.com/whosonfirst/go-whosonfirst-log"
 	@GOPATH=$(GOPATH) go get -u "github.com/whosonfirst/go-whosonfirst-placetypes"
-	# @GOPATH=$(GOPATH) go get -u "github.com/whosonfirst/go-whosonfirst-spr"
+	@GOPATH=$(GOPATH) go get -u "github.com/whosonfirst/go-whosonfirst-spr"
+	@GOPATH=$(GOPATH) go get -u "github.com/whosonfirst/go-whosonfirst-timer"
 	@GOPATH=$(GOPATH) go get -u "github.com/whosonfirst/go-whosonfirst-uri"
 	@GOPATH=$(GOPATH) go get -u "github.com/garyburd/redigo/redis"
 	@GOPATH=$(GOPATH) go get -u "github.com/tidwall/gjson"
@@ -38,7 +39,7 @@ deps:
 vendor-deps: rmdeps deps
 	if test ! -d vendor; then mkdir vendor; fi
 	if test -d vendor/src; then rm -rf vendor/src; fi
-	cp -r src vendor/src
+	cp -r src/* vendor/
 	find vendor -name '.git' -print -type d -exec rm -rf {} +
 	rm -rf src
 
