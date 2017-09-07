@@ -126,6 +126,14 @@ func main() {
 
 	indexer, err := index.NewTile38Indexer(clients...)
 
+	if err != nil {
+		logger.Fatal("failed to instantiate indexer because %v", err)
+	}
+
+	if *t38_collection == "" {
+		logger.Fatal("you forgot to specify a collection!")
+	}
+
 	indexer.Verbose = *verbose
 	indexer.Debug = *debug
 	indexer.Geometry = *geom
