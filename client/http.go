@@ -12,9 +12,7 @@ import (
 
 type HTTPClient struct {
 	tile38.Tile38Client
-	Endpoint string
-	Debug    bool
-	Verbose  bool
+	endpoint string
 }
 
 func NewHTTPClient(host string, port int) (*HTTPClient, error) {
@@ -22,11 +20,14 @@ func NewHTTPClient(host string, port int) (*HTTPClient, error) {
 	endpoint := fmt.Sprintf("%s:%d", host, port)
 
 	client := HTTPClient{
-		Endpoint: endpoint,
-		Debug:    false,
+		endpoint: endpoint,
 	}
 
 	return &client, nil
+}
+
+func (cl *HTTPClient) Endpoint() string {
+     return cl.endpoint
 }
 
 func (cl *HTTPClient) Do(t38_cmd string, t38_args ...interface{}) (interface{}, error) {
@@ -41,7 +42,7 @@ func (cl *HTTPClient) Do(t38_cmd string, t38_args ...interface{}) (interface{}, 
 
 	str_cmd := strings.Join(http_cmd, " ")
 
-	t38_url := fmt.Sprintf("http://%s/%s", cl.Endpoint, url.QueryEscape(str_cmd))
+	t38_url := fmt.Sprintf("http://%s/%s", cl.endpoint, url.QueryEscape(str_cmd))
 
 	http_rsp, err := http.Get(t38_url)
 

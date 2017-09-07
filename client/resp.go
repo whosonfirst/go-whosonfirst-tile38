@@ -13,9 +13,7 @@ import (
 
 type RESPClient struct {
 	tile38.Tile38Client
-	Endpoint string
-	Debug    bool
-	Verbose  bool
+	endpoint string
 	pool     *redis.Pool
 }
 
@@ -89,12 +87,15 @@ func NewRESPClient(host string, port int) (*RESPClient, error) {
 	}
 
 	client := RESPClient{
-		Endpoint: t38_endpoint,
-		Debug:    false,
+		endpoint: t38_endpoint,
 		pool:     pool,
 	}
 
 	return &client, nil
+}
+
+func (cl *RESPClient) Endpoint() string {
+     return cl.endpoint
 }
 
 func (cl *RESPClient) Do(t38_cmd string, t38_args ...interface{}) (interface{}, error) {

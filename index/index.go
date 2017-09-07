@@ -41,17 +41,17 @@ type Tile38Indexer struct {
 	Debug    bool
 	Verbose  bool
 	Strict   bool
-	client   tile38.Tile38Client
+	clients  []tile38.Tile38Client
 }
 
-func NewTile38Indexer(client tile38.Tile38Client) (*Tile38Indexer, error) {
+func NewTile38Indexer(clients ...tile38.Tile38Client) (*Tile38Indexer, error) {
 
 	idx := Tile38Indexer{
 		Geometry: "", // use the default geojson geometry
 		Debug:    false,
 		Verbose:  false,
 		Strict:   true,
-		client:   client,
+		clients:  clients,
 	}
 
 	return &idx, nil
@@ -269,13 +269,7 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 
 	if !idx.Debug {
 
-		rsp, err := idx.client.Do(set_cmd, set_args...)
-
-		if err != nil {
-			return err
-		}
-
-		err = util.EnsureOk(rsp)
+		err := idx.Do(set_cmd, set_args...)
 
 		if err != nil {
 			log.Printf("FAILED to SET (geom) key for %s because, %v\n", geom_key, err)
@@ -324,14 +318,7 @@ func (idx *Tile38Indexer) IndexFeature(feature geojson.Feature, collection strin
 
 	if !idx.Debug {
 
-		rsp, err := idx.client.Do(meta_cmd, meta_args...)
-
-		if err != nil {
-			log.Printf("FAILED to SET key for %s because, %v\n", meta_key, err)
-			return err
-		}
-
-		err = util.EnsureOk(rsp)
+		err := idx.Do(meta_cmd, meta_args...)
 
 		if err != nil {
 			log.Printf("FAILED to SET key for %s because, %v\n", meta_key, err)
@@ -373,4 +360,27 @@ func (idx *Tile38Indexer) EnsureWOF(abs_path string, allow_alt bool) bool {
 	}
 
 	return true
+}
+
+func (idx *Tile38Indexer) Do(cmd string, args ...interface{}) error {
+
+	for _, c := range idx.clients {
+
+		rsp, err := c.Do(cmd, args...)
+
+		if err != nil {
+			log.Printf("FAILED issuing command to client (%s) because, %v\n", c.Endpoint(), err)
+			return err
+		}
+
+		err = util.EnsureOk(rsp)
+
+		if err != nil {
+			log.Printf("FAILED to ensure ok for command to client (%s) for %s because, %v\n", c.Endpoint(), err)
+			return err
+		}
+
+	}
+
+	return nil
 }
