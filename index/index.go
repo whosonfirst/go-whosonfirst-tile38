@@ -364,22 +364,47 @@ func (idx *Tile38Indexer) EnsureWOF(abs_path string, allow_alt bool) bool {
 
 func (idx *Tile38Indexer) Do(cmd string, args ...interface{}) error {
 
+	err_ch := make(chan error)
+	done_ch := make(chan bool)
+
 	for _, c := range idx.clients {
 
-		rsp, err := c.Do(cmd, args...)
+		go func(err_ch chan error, done_ch chan bool, c tile38.Tile38Client, cmd string, args ...interface{}) {
 
-		if err != nil {
-			log.Printf("FAILED issuing command to client (%s) because, %v\n", c.Endpoint(), err)
+		   	defer func(){ 
+				done_ch <- true
+			}()
+
+			rsp, err := c.Do(cmd, args...)
+
+			if err != nil {
+				msg := fmt.Sprintf("FAILED issuing command to client (%s) because, %v", c.Endpoint(), err)
+				err_ch <- errors.New(msg)
+				return
+			}
+
+			err = util.EnsureOk(rsp)
+
+			if err != nil {
+				msg := fmt.Sprintf("FAILED to ensure ok for command to client (%s) for %s because, %v\n", c.Endpoint(), err)
+				err_ch <- errors.New(msg)
+				return
+			}
+
+		}(err_ch, done_ch, c, cmd, args...)
+
+	}
+
+	pending := len(idx.clients)
+
+	for pending > 0 {
+
+		select {
+		case err := <-err_ch:
 			return err
+		case <- done_ch:
+			pending -= 1
 		}
-
-		err = util.EnsureOk(rsp)
-
-		if err != nil {
-			log.Printf("FAILED to ensure ok for command to client (%s) for %s because, %v\n", c.Endpoint(), err)
-			return err
-		}
-
 	}
 
 	return nil
