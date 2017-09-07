@@ -27,7 +27,7 @@ func NewHTTPClient(host string, port int) (*HTTPClient, error) {
 }
 
 func (cl *HTTPClient) Endpoint() string {
-     return cl.endpoint
+	return cl.endpoint
 }
 
 func (cl *HTTPClient) Do(t38_cmd string, t38_args ...interface{}) (interface{}, error) {

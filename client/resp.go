@@ -95,7 +95,7 @@ func NewRESPClient(host string, port int) (*RESPClient, error) {
 }
 
 func (cl *RESPClient) Endpoint() string {
-     return cl.endpoint
+	return cl.endpoint
 }
 
 func (cl *RESPClient) Do(t38_cmd string, t38_args ...interface{}) (interface{}, error) {
