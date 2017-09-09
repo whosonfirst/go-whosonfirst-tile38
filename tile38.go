@@ -22,6 +22,7 @@ type Tile38Response struct {
 	Cursor int           `json:"cursor,omitempty"`
 	Fields []string      `json:"fields,omitempty"`
 	Points []Tile38Point `json:"points,omitempty"`
+	Object interface{}   `json:"object,omitempty"`
 }
 
 // 2017/04/19 20:50:53 {"ok":true,"object":"{\"wof:name\":\"10128\",\"wof:country\":\"US\"}","elapsed":"28.496µs"}
