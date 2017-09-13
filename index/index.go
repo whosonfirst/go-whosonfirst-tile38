@@ -371,7 +371,7 @@ func (idx *Tile38Indexer) Do(cmd string, args ...interface{}) error {
 
 		go func(err_ch chan error, done_ch chan bool, c tile38.Tile38Client, cmd string, args ...interface{}) {
 
-		   	defer func(){ 
+			defer func() {
 				done_ch <- true
 			}()
 
@@ -402,7 +402,7 @@ func (idx *Tile38Indexer) Do(cmd string, args ...interface{}) error {
 		select {
 		case err := <-err_ch:
 			return err
-		case <- done_ch:
+		case <-done_ch:
 			pending -= 1
 		}
 	}

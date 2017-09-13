@@ -2,81 +2,24 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
-	"fmt"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"
 	wof "github.com/whosonfirst/go-whosonfirst-index"
 	"github.com/whosonfirst/go-whosonfirst-index/utils"
 	"github.com/whosonfirst/go-whosonfirst-log"
-	"github.com/whosonfirst/go-whosonfirst-tile38"
 	"github.com/whosonfirst/go-whosonfirst-tile38/client"
+	"github.com/whosonfirst/go-whosonfirst-tile38/flags"
 	"github.com/whosonfirst/go-whosonfirst-tile38/index"
 	"github.com/whosonfirst/go-whosonfirst-timer"
 	"io"
 	"os"
 	"runtime"
-	"strconv"
 	"strings"
 )
 
-type Endpoints []string
-
-func (e *Endpoints) String() string {
-	return strings.Join(*e, "\n")
-}
-
-func (e *Endpoints) Set(value string) error {
-	*e = append(*e, value)
-	return nil
-}
-
-func (e *Endpoints) ToClients() ([]tile38.Tile38Client, error) {
-
-	clients := make([]tile38.Tile38Client, 0)
-
-	for _, str_pair := range *e {
-
-		pair := strings.Split(str_pair, ":")
-
-		if len(pair) > 2 {
-			msg := fmt.Sprintf("Invalid endpoint string %s", str_pair)
-			return nil, errors.New(msg)
-		}
-
-		var host string
-		var port int
-
-		if len(pair) == 1 {
-			host = pair[0]
-			port = 9851
-		} else {
-
-			p, err := strconv.Atoi(pair[1])
-
-			if err != nil {
-				return nil, err
-			}
-
-			host = pair[0]
-			port = p
-		}
-
-		t38_client, err := client.NewRESPClient(host, port)
-
-		if err != nil {
-			return nil, err
-		}
-
-		clients = append(clients, t38_client)
-	}
-
-	return clients, nil
-}
-
 func main() {
 
-	var endpoints Endpoints
+	var endpoints flags.Endpoints
 
 	flag.Var(&endpoints, "tile38-endpoint", "One or more Tile38 'host:port' (or simply 'host' in which case port is assumed to be '9851') endpoints to connect to.")
 
