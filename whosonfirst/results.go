@@ -20,9 +20,15 @@ func Tile38ResponseToWOFResponse(rsp tile38.Tile38Response) (tile38.WOFResponse,
 
 		tmp := make(map[string]int64)
 
-		for i, k := range rsp.Fields {
+		// sometimes 'fields' is a list of strings, sometimes it's a list of ints
+		// and sometimes... it's a dictionary (20170913/thisisaaronland)
+
+		fields := rsp.Fields.([]interface{})
+
+		for i, k := range fields {
+			str_k := k.(string)
 			v := int64(p.Fields[i].(float64))
-			tmp[k] = v
+			tmp[str_k] = v
 		}
 
 		wof_result := tile38.WOFResult{

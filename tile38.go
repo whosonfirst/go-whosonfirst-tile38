@@ -20,7 +20,7 @@ type Tile38Response struct {
 	Ok     bool          `json:"ok"`
 	Count  int           `json:"count,omitempty"`
 	Cursor int           `json:"cursor,omitempty"`
-	Fields []string      `json:"fields,omitempty"`
+	Fields interface{}   `json:"fields,omitempty"`
 	Points []Tile38Point `json:"points,omitempty"`
 	Object interface{}   `json:"object,omitempty"`
 }
